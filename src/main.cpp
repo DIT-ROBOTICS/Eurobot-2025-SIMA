@@ -1,15 +1,17 @@
 #include <Arduino.h>
 
-#define STEP_PIN_L 12   // 連接 TMC2209 STEP 腳位
-#define DIR_PIN_L 18    // 連接 TMC2209 DIR 腳位
-#define STEP_PIN_R 4   // 連接 TMC2209 STEP 腳位
-#define DIR_PIN_R 14    // 連接 TMC2209 DIR 腳位
-#define MS1_PIN 5   // 連接 MS1
-#define MS2_PIN 16   // 連接 MS2
+#define STEP_PIN_L 12   
+#define DIR_PIN_L 14    
+#define STEP_PIN_R 4   
+#define DIR_PIN_R 18    
+#define MS1_PIN 5   
+#define MS2_PIN 16  
 
 #define wheelCircum  148.188923//47.17*3.1415926 mm
-#define lengthPerDegree 0.411636//mm
-#define lengthPerStep 0.0115772596
+#define lengthPerDegree 0.411636//148.188923/360 mm
+#define lengthPerStep 0.0115772596//148.188923/12800 mm
+#define wheelDistance 81.17// mm
+#define carCircum 255//81.17*3.1415926 mm
 
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
 
@@ -18,7 +20,7 @@ float stepDelayL = 70, stepDelayR = 70;
 bool accelerationL = false, accelerationR = false;
 float distanceL=0, distanceR=0;
 
-int go=1;
+float missionL=1,missionR=1;
 
 void IRAM_ATTR stepperCallbackL(void *arg){
     
@@ -28,7 +30,7 @@ void IRAM_ATTR stepperCallbackL(void *arg){
     if(accelerationL){
         stepDelayL-=0.005;
         
-        if(stepDelayL<=16||distanceL<=50){
+        if(stepDelayL<=16||distanceL<=120){
             accelerationL=false;
         }    
     }
@@ -37,6 +39,9 @@ void IRAM_ATTR stepperCallbackL(void *arg){
     }
     if(distanceL>=0){
         esp_timer_start_once(stepperTimerL, stepDelayL);
+    }
+    else{
+        missionL+=0.5;
     }
 }
 void IRAM_ATTR stepperCallbackR(void *arg){
@@ -47,7 +52,7 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     if(accelerationR){
         stepDelayR -= 0.005;
         
-        if(stepDelayR <= 16 || distanceR <= 50){
+        if(stepDelayR <= 16 || distanceR <= 120){
             accelerationR = false;
         }    
     }
@@ -57,13 +62,34 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     if(distanceR >= 0){
         esp_timer_start_once(stepperTimerR, stepDelayR);
     }
+    else{
+        missionR+=0.5;
+    }
 }
 
 
 void goFoward(float distance){
 
+    stepDelayL = 70; 
+    stepDelayR = 70; 
+    digitalWrite(DIR_PIN_L, HIGH);
+    digitalWrite(DIR_PIN_R, LOW);
     distanceL=distance;
     distanceR=distance;
+    esp_timer_start_once(stepperTimerL, stepDelayL);
+    esp_timer_start_once(stepperTimerR, stepDelayR);
+    accelerationL=true;
+    accelerationR=true;
+
+}
+void turnLeft(float degree){
+
+    stepDelayL = 70; 
+    stepDelayR = 70; 
+    digitalWrite(DIR_PIN_L, LOW);
+    digitalWrite(DIR_PIN_R, LOW);
+    distanceL = carCircum*degree/360;
+    distanceR = carCircum*degree/360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
     esp_timer_start_once(stepperTimerR, stepDelayR);
     accelerationL=true;
@@ -83,11 +109,11 @@ void setup() {
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, HIGH);
 
+    //setting timer
     esp_timer_create_args_t timerArgsL = {};
     timerArgsL.callback = &stepperCallbackL;
     timerArgsL.name = "StepperTimerL";
     esp_timer_create(&timerArgsL, &stepperTimerL);
- // 啟動 Timer
 
     esp_timer_create_args_t timerArgsR = {};
     timerArgsR.callback = &stepperCallbackR;
@@ -101,18 +127,31 @@ void setup() {
 
     accelerationL=true;
     accelerationR=true;
-    
-
 }
 
 void loop() {
 
-    if(go){
+    if(missionL==1&&missionR==1){
 
-        goFoward(1000);
-        go=0;
-    }
-  
+            goFoward(1100);
+            missionL=1.5;
+            missionR=1.5;
+            
+        }
+    if(missionL==2&&missionR==2){
+    
+            turnLeft(90);
+            missionL=2.5;
+            missionR=2.5;
+            
+        }
+    if(missionL==3&&missionR==3){
+    
+            goFoward(250);
+            missionL=3.5;
+            missionR=3.5;
+            
+        }
 
 
 //     //foward
