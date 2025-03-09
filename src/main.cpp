@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "VL53L0X_Sensors.h"
 
 #define STEP_PIN_L 12   
 #define DIR_PIN_L 14    
@@ -12,15 +13,15 @@
 #define lengthPerStep 0.0115772596//148.188923/12800 mm
 #define wheelDistance 81.17// mm
 #define carCircum 255//81.17*3.1415926 mm
-
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
 
 esp_timer_handle_t stepperTimerL, stepperTimerR;
 float stepDelayL = 70, stepDelayR = 70; 
 bool accelerationL = false, accelerationR = false;
 float distanceL=0, distanceR=0;
-
 float missionL=1,missionR=1;
+
+VL53L0X_Sensors sensors; 
 
 void IRAM_ATTR stepperCallbackL(void *arg){
     
@@ -127,33 +128,36 @@ void setup() {
 
     accelerationL=true;
     accelerationR=true;
+
+    sensors.begin();
 }
 
 void loop() {
 
-    if(missionL==1&&missionR==1){
+    // if(missionL==1&&missionR==1){
 
-            goFoward(1100);
-            missionL=1.5;
-            missionR=1.5;
+    //         goFoward(1100);
+    //         missionL=1.5;
+    //         missionR=1.5;
             
-        }
-    if(missionL==2&&missionR==2){
+    //     }
+    // if(missionL==2&&missionR==2){
     
-            turnLeft(90);
-            missionL=2.5;
-            missionR=2.5;
+    //         turnLeft(90);
+    //         missionL=2.5;
+    //         missionR=2.5;
             
-        }
-    if(missionL==3&&missionR==3){
+    //     }
+    // if(missionL==3&&missionR==3){
     
-            goFoward(250);
-            missionL=3.5;
-            missionR=3.5;
+        
+    //         goFoward(250);
+    //         missionL=3.5;
+    //         missionR=3.5;
             
-        }
+    //     }
 
-
+        sensors.readSensors();
 //     //foward
 
 //     digitalWrite(DIR_PIN_L, LOW);  // 設定方向為順時針
