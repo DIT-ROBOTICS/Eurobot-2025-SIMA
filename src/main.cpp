@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <math.h> 
 #include "VL53L0X_Sensors.h"
 
 #define STEP_PIN_L 12   
@@ -16,8 +17,10 @@
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
 
 esp_timer_handle_t stepperTimerL, stepperTimerR, VL53Timer;
+
 float stepDelayL = 70, stepDelayR = 70; 
 bool accelerationL = false, accelerationR = false;
+float x_1=1550, y_1=2850, theta=180;//sima 1 ; start (1550,2850) ; stop(1700,1300)
 float distanceL=0, distanceR=0;
 float missionL=1,missionR=1;
 
@@ -103,6 +106,39 @@ void turnLeft(float degree){
     accelerationR=true;
 
 }
+void turnRight(float degree){
+
+    stepDelayL = 70; 
+    stepDelayR = 70; 
+    digitalWrite(DIR_PIN_L, HIGH);
+    digitalWrite(DIR_PIN_R, HIGH);
+    distanceL = carCircum*degree/360;
+    distanceR = carCircum*degree/360;
+    esp_timer_start_once(stepperTimerL, stepDelayL);
+    esp_timer_start_once(stepperTimerR, stepDelayR);
+    accelerationL=true;
+    accelerationR=true;
+
+}
+void goToTheta(float x_2, float y_2) {
+    float dx = x_2 - x_1;
+    float dy = y_2 - y_1;
+
+    float thetaGoal = atan2f(dy, dx) * 180 / M_PI;
+
+    float thetaDiff = thetaGoal - theta;
+
+    if (thetaDiff > 180) thetaDiff -= 360;
+    if (thetaDiff < -180) thetaDiff += 360;
+
+    if (thetaDiff > 0) {
+        turnLeft(thetaDiff);
+    } else {
+        turnRight(-thetaDiff);  
+    }
+
+}
+
 
 void setup() {
     Serial.begin(9600);
@@ -127,11 +163,11 @@ void setup() {
     timerArgsR.name = "StepperTimerR";
     esp_timer_create(&timerArgsR, &stepperTimerR);
 
-    esp_timer_create_args_t timerArgsV = {};
-    timerArgsV.callback = &VL53Callback;
-    timerArgsV.name = "VL53Timer";
-    esp_timer_create(&timerArgsV, &VL53Timer);
-    esp_timer_start_periodic(VL53Timer, 100000);
+    // esp_timer_create_args_t timerArgsV = {};
+    // timerArgsV.callback = &VL53Callback;
+    // timerArgsV.name = "VL53Timer";
+    // esp_timer_create(&timerArgsV, &VL53Timer);
+    // esp_timer_start_periodic(VL53Timer, 100000);
     
 
     // 設定 1/32 微步模式 (MS1 = HIGH, MS2 = LOW)
@@ -141,23 +177,33 @@ void setup() {
     accelerationL=true;
     accelerationR=true;
 
-    sensors.begin();
+    // sensors.begin();
+
+
 }
 
 void loop() {
 
-    Serial.print(VL53L);
-    Serial.print("  ");
-    Serial.print(VL53M);
-    Serial.print("  ");
-    Serial.println(VL53R);
     // if(missionL==1&&missionR==1){
 
-    //         goFoward(1100);
-    //         missionL=1.5;
-    //         missionR=1.5;
+    //     goToTheta(2950,1550);
+    //     missionL=0;        
+    //  }
+
+    // Serial.print(VL53L);
+    // Serial.print("  ");
+    // Serial.print(VL53M);
+    // Serial.print("  ");
+    // Serial.println(VL53R);
+
+
+    if(missionL==1&&missionR==1){
+
+            goFoward(1100);
+            missionL=1.5;
+            missionR=1.5;
             
-    //     }
+        }
     // if(missionL==2&&missionR==2){
     
     //         turnLeft(90);
@@ -174,102 +220,5 @@ void loop() {
             
     //     }
 
-        
-//     //foward
-
-//     digitalWrite(DIR_PIN_L, LOW);  // 設定方向為順時針
-//     digitalWrite(DIR_PIN_R, HIGH);  // 設定方向為順時針
-//     if(go){
-
-//     for (int i = 0; i < STEPS_PER_REV*0.5; i++) {
-//             digitalWrite(STEP_PIN_L, HIGH);
-//             delayMicroseconds(50);
-//             digitalWrite(STEP_PIN_R, HIGH);
-//             delayMicroseconds(50);
-//             digitalWrite(STEP_PIN_L, LOW);
-//             delayMicroseconds(50);
-//             digitalWrite(STEP_PIN_R, LOW);
-//             delayMicroseconds(50);
-//     }
-//     for (int i = 0; i < STEPS_PER_REV*0.5; i++) {
-//         digitalWrite(STEP_PIN_L, HIGH);
-//         delayMicroseconds(35);
-//         digitalWrite(STEP_PIN_R, HIGH);
-//         delayMicroseconds(35);
-//         digitalWrite(STEP_PIN_L, LOW);
-//         delayMicroseconds(35);
-//         digitalWrite(STEP_PIN_R, LOW);
-//         delayMicroseconds(35);
-// }
-//     for (int i = 0; i < STEPS_PER_REV*1.3756; i++) {
-//         digitalWrite(STEP_PIN_L, HIGH);
-//         delayMicroseconds(15);
-//         digitalWrite(STEP_PIN_R, HIGH);
-//         delayMicroseconds(15);
-//         digitalWrite(STEP_PIN_L, LOW);
-//         delayMicroseconds(15);
-//         digitalWrite(STEP_PIN_R, LOW);
-//         delayMicroseconds(15);
-//     }
-//     for (int i = 0; i < STEPS_PER_REV*0.5; i++) {
-//         digitalWrite(STEP_PIN_L, HIGH);
-//         delayMicroseconds(35);
-//         digitalWrite(STEP_PIN_R, HIGH);
-//         delayMicroseconds(35);
-//         digitalWrite(STEP_PIN_L, LOW);
-//         delayMicroseconds(35);
-//         digitalWrite(STEP_PIN_R, LOW);
-//         delayMicroseconds(35);
-// }
-//     for (int i = 0; i < STEPS_PER_REV*0.5; i++) {
-//         digitalWrite(STEP_PIN_L, HIGH);
-//         delayMicroseconds(50);
-//         digitalWrite(STEP_PIN_R, HIGH);
-//         delayMicroseconds(50);
-//         digitalWrite(STEP_PIN_L, LOW);
-//         delayMicroseconds(50);
-//         digitalWrite(STEP_PIN_R, LOW);
-//         delayMicroseconds(50);
-//     }
-//     go=0;
-//     }
-    // if(go){
-
-    //     for (int i = 0; i < STEPS_PER_REV*3.3756; i++) {
-    //         digitalWrite(STEP_PIN_L, HIGH);
-    //         delayMicroseconds(35);
-    //         digitalWrite(STEP_PIN_R, HIGH);
-    //         delayMicroseconds(35);
-    //         digitalWrite(STEP_PIN_L, LOW);
-    //         delayMicroseconds(35);
-    //         digitalWrite(STEP_PIN_R, LOW);
-    //         delayMicroseconds(35);
-    //     }
-    //  go=0;
-    // }
     
-
-
-
-    // Serial.println("順時針旋轉一圈...");
-    // digitalWrite(DIR_PIN_L, HIGH);  // 設定方向為順時針
-    // for (int i = 0; i < STEPS_PER_REV*60; i++) {
-    //     digitalWrite(STEP_PIN_L, HIGH);
-    //     delayMicroseconds(15);
-    //     digitalWrite(STEP_PIN_L, LOW);
-    //     delayMicroseconds(15);
-    // }
-
-    // delay(1000);
-
-    // Serial.println("逆時針旋轉一圈...");
-    // digitalWrite(DIR_PIN_L, LOW);
-    // for (int i = 0; i < STEPS_PER_REV*5; i++) {
-    //     digitalWrite(STEP_PIN_L, HIGH);
-    //     delayMicroseconds(15);
-    //     digitalWrite(STEP_PIN_L, LOW);
-    //     delayMicroseconds(15);
-    // }
-
-    // delay(1000);
 }
