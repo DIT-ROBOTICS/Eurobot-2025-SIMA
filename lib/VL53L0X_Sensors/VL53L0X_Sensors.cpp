@@ -1,5 +1,7 @@
 #include "VL53L0X_Sensors.h"
 
+float VL53L = 0.0, VL53M = 0.0, VL53R = 0.0;
+
 VL53L0X_Sensors::VL53L0X_Sensors() {
     // 設定 XSHUT 腳位為輸出
     pinMode(XSHUT1, OUTPUT);
@@ -43,17 +45,9 @@ void VL53L0X_Sensors::begin() {
 }
 
 void VL53L0X_Sensors::readSensors() {
-    Serial.print("Sensor 1: ");
-    Serial.print(sensor1.readRangeContinuousMillimeters());
-    Serial.print(" mm | ");
 
-    Serial.print("Sensor 2: ");
-    Serial.print(sensor2.readRangeContinuousMillimeters());
-    Serial.print(" mm | ");
+    VL53L=sensor1.readRangeContinuousMillimeters();
+    VL53M=sensor2.readRangeContinuousMillimeters();
+    VL53R=sensor3.readRangeContinuousMillimeters();
 
-    Serial.print("Sensor 3: ");
-    Serial.print(sensor3.readRangeContinuousMillimeters());
-    Serial.println(" mm");
-
-    delay(100);
 }

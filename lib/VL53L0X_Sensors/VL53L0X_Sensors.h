@@ -4,6 +4,8 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
+extern float VL53L, VL53M, VL53R;
+
 class VL53L0X_Sensors {
 public:
     VL53L0X sensor1, sensor2, sensor3;

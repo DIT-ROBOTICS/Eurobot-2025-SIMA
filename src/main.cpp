@@ -15,7 +15,7 @@
 #define carCircum 255//81.17*3.1415926 mm
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
 
-esp_timer_handle_t stepperTimerL, stepperTimerR;
+esp_timer_handle_t stepperTimerL, stepperTimerR, VL53Timer;
 float stepDelayL = 70, stepDelayR = 70; 
 bool accelerationL = false, accelerationR = false;
 float distanceL=0, distanceR=0;
@@ -66,6 +66,12 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     else{
         missionR+=0.5;
     }
+}
+
+void IRAM_ATTR VL53Callback(void *arg){
+
+    sensors.readSensors();
+
 }
 
 
@@ -120,7 +126,13 @@ void setup() {
     timerArgsR.callback = &stepperCallbackR;
     timerArgsR.name = "StepperTimerR";
     esp_timer_create(&timerArgsR, &stepperTimerR);
-    ;
+
+    esp_timer_create_args_t timerArgsV = {};
+    timerArgsV.callback = &VL53Callback;
+    timerArgsV.name = "VL53Timer";
+    esp_timer_create(&timerArgsV, &VL53Timer);
+    esp_timer_start_periodic(VL53Timer, 100000);
+    
 
     // 設定 1/32 微步模式 (MS1 = HIGH, MS2 = LOW)
     digitalWrite(MS1_PIN, HIGH);
@@ -134,6 +146,11 @@ void setup() {
 
 void loop() {
 
+    Serial.print(VL53L);
+    Serial.print("  ");
+    Serial.print(VL53M);
+    Serial.print("  ");
+    Serial.println(VL53R);
     // if(missionL==1&&missionR==1){
 
     //         goFoward(1100);
@@ -157,7 +174,7 @@ void loop() {
             
     //     }
 
-        sensors.readSensors();
+        
 //     //foward
 
 //     digitalWrite(DIR_PIN_L, LOW);  // 設定方向為順時針
