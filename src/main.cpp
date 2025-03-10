@@ -13,14 +13,14 @@
 #define lengthPerDegree 0.411636//148.188923/360 mm
 #define lengthPerStep 0.0115772596//148.188923/12800 mm
 #define wheelDistance 81.17// mm
-#define carCircum 255//81.17*3.1415926 mm
+#define carCircum 284//90.4*3.1415926 mm
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
 
 esp_timer_handle_t stepperTimerL, stepperTimerR, VL53Timer;
 
 float stepDelayL = 70, stepDelayR = 70; 
 bool accelerationL = false, accelerationR = false;
-float x_1=1550, y_1=2850, theta=180;//sima 1 ; start (1550,2850) ; stop(1700,1300)
+float x_1=2850, y_1=1550, theta=180;//sima 1 ; start (1550,2850) ; stop(1700,1300)
 float distanceL=0, distanceR=0;
 float missionL=1,missionR=1;
 
@@ -121,21 +121,33 @@ void turnRight(float degree){
 
 }
 void goToTheta(float x_2, float y_2) {
+
     float dx = x_2 - x_1;
     float dy = y_2 - y_1;
 
     float thetaGoal = atan2f(dy, dx) * 180 / M_PI;
-
+    Serial.print(thetaGoal);
+    Serial.print("  ");
     float thetaDiff = thetaGoal - theta;
+    
 
     if (thetaDiff > 180) thetaDiff -= 360;
     if (thetaDiff < -180) thetaDiff += 360;
-
+    Serial.println(thetaDiff);
     if (thetaDiff > 0) {
         turnLeft(thetaDiff);
     } else {
         turnRight(-thetaDiff);  
     }
+    
+
+}
+void goToDistance(float x_2, float y_2){
+
+    float dx = x_2 - x_1;
+    float dy = y_2 - y_1;    
+    float distance=sqrt(pow(dx,2)+pow(dy,2));
+    goFoward(distance);
 
 }
 
@@ -184,11 +196,21 @@ void setup() {
 
 void loop() {
 
-    // if(missionL==1&&missionR==1){
+    if(missionL==1&&missionR==1){
 
-    //     goToTheta(2950,1550);
-    //     missionL=0;        
-    //  }
+        goToTheta(1500,1250);
+        missionL=1.5;
+        missionR=1.5;
+           
+     }
+     if(missionL==2&&missionR==2){
+
+        goToDistance(1500,1250);
+
+        missionL=2.5;
+        missionR=2.5;
+           
+     }
 
     // Serial.print(VL53L);
     // Serial.print("  ");
@@ -197,13 +219,13 @@ void loop() {
     // Serial.println(VL53R);
 
 
-    if(missionL==1&&missionR==1){
+    // if(missionL==1&&missionR==1){
 
-            goFoward(1100);
-            missionL=1.5;
-            missionR=1.5;
+    //         goFoward(1100);
+    //         missionL=1.5;
+    //         missionR=1.5;
             
-        }
+    //     }
     // if(missionL==2&&missionR==2){
     
     //         turnLeft(90);
