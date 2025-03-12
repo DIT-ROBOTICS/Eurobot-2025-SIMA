@@ -2,18 +2,18 @@
 #include <math.h> 
 #include "VL53L0X_Sensors.h"
 
-#define STEP_PIN_L 12   
-#define DIR_PIN_L 14    
-#define STEP_PIN_R 4   
-#define DIR_PIN_R 18    
-#define MS1_PIN 5   
-#define MS2_PIN 16  
+#define STEP_PIN_L 6   
+#define DIR_PIN_L 7    
+#define STEP_PIN_R 15   
+#define DIR_PIN_R 16    
+#define MS1_PIN 4   
+#define MS2_PIN 5  
 
 #define wheelCircum  148.188923//47.17*3.1415926 mm
 #define lengthPerDegree 0.411636//148.188923/360 mm
 #define lengthPerStep 0.0115772596//148.188923/12800 mm
 #define wheelDistance 81.17// mm
-#define carCircum 284//90.4*3.1415926 mm
+#define carCircum 291.57//92.8*3.1415926 mm
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
 
 esp_timer_handle_t stepperTimerL, stepperTimerR, VL53Timer;
@@ -96,8 +96,8 @@ void turnLeft(float degree){
 
     stepDelayL = 70; 
     stepDelayR = 70; 
-    digitalWrite(DIR_PIN_L, LOW);
-    digitalWrite(DIR_PIN_R, LOW);
+    digitalWrite(DIR_PIN_L, HIGH);
+    digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum*degree/360;
     distanceR = carCircum*degree/360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
@@ -110,8 +110,8 @@ void turnRight(float degree){
 
     stepDelayL = 70; 
     stepDelayR = 70; 
-    digitalWrite(DIR_PIN_L, HIGH);
-    digitalWrite(DIR_PIN_R, HIGH);
+    digitalWrite(DIR_PIN_L, LOW);
+    digitalWrite(DIR_PIN_R, LOW);
     distanceL = carCircum*degree/360;
     distanceR = carCircum*degree/360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
@@ -175,11 +175,11 @@ void setup() {
     timerArgsR.name = "StepperTimerR";
     esp_timer_create(&timerArgsR, &stepperTimerR);
 
-    // esp_timer_create_args_t timerArgsV = {};
-    // timerArgsV.callback = &VL53Callback;
-    // timerArgsV.name = "VL53Timer";
-    // esp_timer_create(&timerArgsV, &VL53Timer);
-    // esp_timer_start_periodic(VL53Timer, 100000);
+    esp_timer_create_args_t timerArgsV = {};
+    timerArgsV.callback = &VL53Callback;
+    timerArgsV.name = "VL53Timer";
+    esp_timer_create(&timerArgsV, &VL53Timer);
+    esp_timer_start_periodic(VL53Timer, 500000);
     
 
     // 設定 1/32 微步模式 (MS1 = HIGH, MS2 = LOW)
@@ -189,7 +189,7 @@ void setup() {
     accelerationL=true;
     accelerationR=true;
 
-    // sensors.begin();
+    sensors.begin();
 
 
 }
@@ -212,11 +212,11 @@ void loop() {
            
      }
 
-    // Serial.print(VL53L);
-    // Serial.print("  ");
-    // Serial.print(VL53M);
-    // Serial.print("  ");
-    // Serial.println(VL53R);
+    Serial.print(VL53L);
+    Serial.print("  ");
+    Serial.print(VL53M);
+    Serial.print("  ");
+    Serial.println(VL53R);
 
 
     // if(missionL==1&&missionR==1){
