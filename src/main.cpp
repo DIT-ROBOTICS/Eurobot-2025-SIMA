@@ -15,12 +15,14 @@
 #define wheelDistance 81.17// mm
 #define carCircum 291.57//92.8*3.1415926 mm
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
+#define rotateAnglePerStep 0.02859563263// 360/((291.57/2)/0.0115772596) = 360/12589.33504 = 0.02859563263
 
 esp_timer_handle_t stepperTimerL, stepperTimerR, VL53Timer;
 
-float stepDelayL = 70, stepDelayR = 70; 
+float stepDelayL = 90, stepDelayR = 90; 
 bool accelerationL = false, accelerationR = false;
-float x_1=2850, y_1=1550, theta=180;//sima 1 ; start (1550,2850) ; stop(1700,1300)
+bool rotatingL = false, rotatingR = false, going = false;
+float x_1=2850, y_1=1550, theta=180;//sima 1 ; start (2850,1550) ; stop(1700,1250)
 float distanceL=0, distanceR=0;
 float missionL=1,missionR=1;
 
@@ -29,38 +31,48 @@ VL53L0X_Sensors sensors;
 void IRAM_ATTR stepperCallbackL(void *arg){
     
     digitalWrite(STEP_PIN_L, !digitalRead(STEP_PIN_L));
-    distanceL-=0.0115772596;
+    distanceL-=lengthPerStep;
+    if(going){
+
+        x_1+=lengthPerStep*cos(theta * PI / 180.0);
+        y_1+=lengthPerStep*sin(theta * PI / 180.0);
+
+    }
 
     if(accelerationL){
         stepDelayL-=0.005;
         
-        if(stepDelayL<=16||distanceL<=120){
+        if(stepDelayL<=12||distanceL<=80){
             accelerationL=false;
         }    
     }
-    if(distanceL<=120){
-        stepDelayL+=0.005;
+    if(distanceL<=80){
+        if(!rotatingL||!rotatingR){
+
+        stepDelayL+=0.005;    
+        }
     }
     if(distanceL>=0){
         esp_timer_start_once(stepperTimerL, stepDelayL);
     }
     else{
         missionL+=0.5;
+        going = false;
     }
 }
 void IRAM_ATTR stepperCallbackR(void *arg){
     
     digitalWrite(STEP_PIN_R, !digitalRead(STEP_PIN_R));
-    distanceR -= 0.0115772596;
+    distanceR -= lengthPerStep;
 
     if(accelerationR){
         stepDelayR -= 0.005;
         
-        if(stepDelayR <= 16 || distanceR <= 120){
+        if(stepDelayR <= 12 || distanceR <= 80){
             accelerationR = false;
         }    
     }
-    if(distanceR <= 120){
+    if(distanceR <= 80){
         stepDelayR += 0.005;
     }
     if(distanceR >= 0){
@@ -82,8 +94,8 @@ void goFoward(float distance){
 
     stepDelayL = 70; 
     stepDelayR = 70; 
-    digitalWrite(DIR_PIN_L, HIGH);
-    digitalWrite(DIR_PIN_R, LOW);
+    digitalWrite(DIR_PIN_L, LOW);
+    digitalWrite(DIR_PIN_R, HIGH);
     distanceL=distance;
     distanceR=distance;
     esp_timer_start_once(stepperTimerL, stepDelayL);
@@ -94,30 +106,29 @@ void goFoward(float distance){
 }
 void turnLeft(float degree){
 
-    stepDelayL = 70; 
-    stepDelayR = 70; 
+    stepDelayL = 80; 
+    stepDelayR = 80; 
     digitalWrite(DIR_PIN_L, HIGH);
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum*degree/360;
     distanceR = carCircum*degree/360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
     esp_timer_start_once(stepperTimerR, stepDelayR);
-    accelerationL=true;
-    accelerationR=true;
+    rotatingL=true;
 
 }
+
 void turnRight(float degree){
 
-    stepDelayL = 70; 
-    stepDelayR = 70; 
+    stepDelayL = 80; 
+    stepDelayR = 80; 
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, LOW);
     distanceL = carCircum*degree/360;
     distanceR = carCircum*degree/360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
     esp_timer_start_once(stepperTimerR, stepDelayR);
-    accelerationL=true;
-    accelerationR=true;
+    rotatingR=true;
 
 }
 void goToTheta(float x_2, float y_2) {
@@ -129,15 +140,15 @@ void goToTheta(float x_2, float y_2) {
     Serial.print(thetaGoal);
     Serial.print("  ");
     float thetaDiff = thetaGoal - theta;
-    
-
     if (thetaDiff > 180) thetaDiff -= 360;
     if (thetaDiff < -180) thetaDiff += 360;
     Serial.println(thetaDiff);
     if (thetaDiff > 0) {
         turnLeft(thetaDiff);
+        theta+=thetaDiff;
     } else {
         turnRight(-thetaDiff);  
+        theta-=thetaDiff;
     }
     
 
@@ -148,6 +159,7 @@ void goToDistance(float x_2, float y_2){
     float dy = y_2 - y_1;    
     float distance=sqrt(pow(dx,2)+pow(dy,2));
     goFoward(distance);
+    going = true;
 
 }
 
@@ -175,11 +187,11 @@ void setup() {
     timerArgsR.name = "StepperTimerR";
     esp_timer_create(&timerArgsR, &stepperTimerR);
 
-    esp_timer_create_args_t timerArgsV = {};
-    timerArgsV.callback = &VL53Callback;
-    timerArgsV.name = "VL53Timer";
-    esp_timer_create(&timerArgsV, &VL53Timer);
-    esp_timer_start_periodic(VL53Timer, 500000);
+    // esp_timer_create_args_t timerArgsV = {};
+    // timerArgsV.callback = &VL53Callback;
+    // timerArgsV.name = "VL53Timer";
+    // esp_timer_create(&timerArgsV, &VL53Timer);
+    // esp_timer_start_periodic(VL53Timer, 500000);
     
 
     // 設定 1/32 微步模式 (MS1 = HIGH, MS2 = LOW)
@@ -212,11 +224,23 @@ void loop() {
            
      }
 
-    Serial.print(VL53L);
-    Serial.print("  ");
-    Serial.print(VL53M);
-    Serial.print("  ");
-    Serial.println(VL53R);
+    sensors.readSensors();
+
+    
+    // Serial.print(VL53L);
+    // Serial.print("  ");
+    // Serial.print(VL53M);
+    // Serial.print("  ");
+    // Serial.println(VL53R);
+
+    Serial.print("theta= ");
+    Serial.print(theta);
+    Serial.print("x= ");
+    Serial.print(x_1);
+    Serial.print("y= ");
+    Serial.println(y_1);
+
+
 
 
     // if(missionL==1&&missionR==1){
