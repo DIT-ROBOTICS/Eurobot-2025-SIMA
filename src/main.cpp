@@ -49,7 +49,7 @@ void IRAM_ATTR stepperCallbackL(void *arg){
     if(accelerationL){
         stepDelayL-=0.004;
         
-        if(stepDelayL<=13||distanceL<=80){
+        if(stepDelayL<=12||distanceL<=80){
             accelerationL=false;
         }    
     }
@@ -80,7 +80,7 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     if(accelerationR){
         stepDelayR -= 0.004;
         
-        if(stepDelayR <= 13 || distanceR <= 80){
+        if(stepDelayR <= 12 || distanceR <= 80){
             accelerationR = false;
         }    
     }
@@ -227,21 +227,21 @@ void setup() {
 
 void loop() {
 
-    if(missionL==1&&missionR==1){
+    // if(missionL==1&&missionR==1){
 
-        goToTheta(1000,1400);
-        missionL=1.5;
-        missionR=1.5;
+    //     goToTheta(1000,1400);
+    //     missionL=1.5;
+    //     missionR=1.5;
            
-     }
-     if(missionL==2&&missionR==2){
+    //  }
+    //  if(missionL==2&&missionR==2){
 
-        goToDistance(1000,1400);
+    //     goToDistance(1000,1400);
 
-        missionL=2.5;
-        missionR=2.5;
+    //     missionL=2.5;
+    //     missionR=2.5;
            
-     }
+    //  }
 
     // sensors.readSensors();
 
@@ -316,27 +316,27 @@ void loop() {
 
 
 
-    // if(missionL==1&&missionR==1){
+    if(missionL==1&&missionR==1){
 
-    //         goFoward(1000);
-    //         missionL=1.5;
-    //         missionR=1.5;
+            goFoward(150);
+            missionL=1.5;
+            missionR=1.5;
             
-    //     }
-    // if(missionL==2&&missionR==2){
+        }
+    if(missionL==2&&missionR==2){
     
-    //         turnRight(90);
-    //         missionL=2.5;
-    //         missionR=2.5;
+            turnLeft(90);
+            missionL=2.5;
+            missionR=2.5;
             
-    //     }
-    // if(missionL==3&&missionR==3){
+        }
+    if(missionL==3&&missionR==3){
     
         
-    //         goFoward(280);
-    //         missionL=3.5;
-    //         missionR=3.5;
+            goFoward(1750);
+            missionL=3.5;
+            missionR=3.5;
             
-    //     }
+        }
     
 }
