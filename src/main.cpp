@@ -23,7 +23,7 @@ float stepDelayL = 70, stepDelayR = 70;
 bool accelerationL = false, accelerationR = false;
 bool rotatingL = false, rotatingR = false, going = false;
 bool avoiding = false;
-float x_1=2850, y_1=1550, theta=180;//sima 1 ; start (2850,1550) ; stop(1700,1250)
+float x_1=2850, y_1=1550, theta=180;//sima 2 ; start (2850,1550) ; stop(1700,1250)
 float distanceL=0, distanceR=0;
 float missionL=1, missionR=1, avoidStageL=0, avoidStageR=0;
 
@@ -47,16 +47,18 @@ void IRAM_ATTR stepperCallbackL(void *arg){
     }
 
     if(accelerationL){
-        stepDelayL-=0.004;
+        stepDelayL-=0.003;
         
-        if(stepDelayL<=12||distanceL<=80){
+        if(stepDelayL<=10||distanceL<=80){
             accelerationL=false;
         }    
     }
     if(distanceL<=80){
         if(!rotatingL||!rotatingR){
-
-        stepDelayL+=0.005;    
+        if(stepDelayL<70){
+            stepDelayL+=0.005;
+        }
+            
         }
     }
     if(distanceL>=0){
@@ -76,14 +78,20 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     distanceR -= lengthPerStep;
 
     if(accelerationR){
-        stepDelayR -= 0.004;
+        stepDelayR -= 0.003;
         
-        if(stepDelayR <= 12 || distanceR <= 80){
+        if(stepDelayR <= 10 || distanceR <= 80){
             accelerationR = false;
         }    
     }
     if(distanceR <= 80){
-        stepDelayR += 0.005;
+        if(!rotatingL||!rotatingR){
+            if(stepDelayR<70){
+                stepDelayR+=0.005;
+            
+                
+            }
+    }
     }
     if(distanceR >= 0){
         esp_timer_start_once(stepperTimerR, stepDelayR);
@@ -119,8 +127,8 @@ void goFoward(float distance){
 }
 void turnLeft(float degree){
 
-    stepDelayL = 60; 
-    stepDelayR = 60; 
+    stepDelayL = 50; 
+    stepDelayR = 50; 
     digitalWrite(DIR_PIN_L, HIGH);
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum*degree/360;
@@ -133,8 +141,8 @@ void turnLeft(float degree){
 
 void turnRight(float degree){
 
-    stepDelayL = 60; 
-    stepDelayR = 60; 
+    stepDelayL = 50; 
+    stepDelayR = 50; 
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, LOW);
     distanceL = carCircum*degree/360;
@@ -235,7 +243,7 @@ void loop() {
            
     //  }
 
-    //sensors.readSensors();
+    // sensors.readSensors();
 
     // if(VL53M<100){
 
@@ -310,7 +318,7 @@ void loop() {
 
     if(missionL==1&&missionR==1){
 
-            goFoward(1100);
+            goFoward(1000);
             missionL=1.5;
             missionR=1.5;
             
@@ -325,7 +333,7 @@ void loop() {
     if(missionL==3&&missionR==3){
     
         
-            goFoward(250);
+            goFoward(280);
             missionL=3.5;
             missionR=3.5;
             
