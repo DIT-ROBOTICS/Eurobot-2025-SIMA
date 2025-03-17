@@ -15,16 +15,17 @@
 #define wheelDistance 81.17// mm
 #define carCircum 291.57//92.8*3.1415926 mm
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
-#define rotateAnglePerStep 0.02859563263// 360/((291.57/2)/0.0115772596) = 360/12589.33504 = 0.02859563263
+#define rotateAnglePerStep 0.0142978163// (360/((291.57/2)/0.0115772596))/2 = 360/12589.33504/2 = 0.02859563263/2=
 
 esp_timer_handle_t stepperTimerL, stepperTimerR, VL53Timer;
 
-float stepDelayL = 90, stepDelayR = 90; 
+float stepDelayL = 70, stepDelayR = 70; 
 bool accelerationL = false, accelerationR = false;
 bool rotatingL = false, rotatingR = false, going = false;
+bool avoiding = false;
 float x_1=2850, y_1=1550, theta=180;//sima 1 ; start (2850,1550) ; stop(1700,1250)
 float distanceL=0, distanceR=0;
-float missionL=1,missionR=1;
+float missionL=1, missionR=1, avoidStageL=0, avoidStageR=0;
 
 VL53L0X_Sensors sensors; 
 
@@ -38,9 +39,15 @@ void IRAM_ATTR stepperCallbackL(void *arg){
         y_1+=lengthPerStep*sin(theta * PI / 180.0);
 
     }
+    else if(rotatingL){
+        theta+=rotateAnglePerStep;
+    }    
+    else if(rotatingR){
+        theta-=rotateAnglePerStep;
+    }
 
     if(accelerationL){
-        stepDelayL-=0.005;
+        stepDelayL-=0.004;
         
         if(stepDelayL<=12||distanceL<=80){
             accelerationL=false;
@@ -58,6 +65,9 @@ void IRAM_ATTR stepperCallbackL(void *arg){
     else{
         missionL+=0.5;
         going = false;
+        if(avoiding){
+            avoidStageL+=0.5;
+        }
     }
 }
 void IRAM_ATTR stepperCallbackR(void *arg){
@@ -66,7 +76,7 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     distanceR -= lengthPerStep;
 
     if(accelerationR){
-        stepDelayR -= 0.005;
+        stepDelayR -= 0.004;
         
         if(stepDelayR <= 12 || distanceR <= 80){
             accelerationR = false;
@@ -80,6 +90,9 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     }
     else{
         missionR+=0.5;
+        if(avoiding){
+            avoidStageR+=0.5;
+        }
     }
 }
 
@@ -106,8 +119,8 @@ void goFoward(float distance){
 }
 void turnLeft(float degree){
 
-    stepDelayL = 80; 
-    stepDelayR = 80; 
+    stepDelayL = 60; 
+    stepDelayR = 60; 
     digitalWrite(DIR_PIN_L, HIGH);
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum*degree/360;
@@ -120,8 +133,8 @@ void turnLeft(float degree){
 
 void turnRight(float degree){
 
-    stepDelayL = 80; 
-    stepDelayR = 80; 
+    stepDelayL = 60; 
+    stepDelayR = 60; 
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, LOW);
     distanceL = carCircum*degree/360;
@@ -145,10 +158,8 @@ void goToTheta(float x_2, float y_2) {
     Serial.println(thetaDiff);
     if (thetaDiff > 0) {
         turnLeft(thetaDiff);
-        theta+=thetaDiff;
     } else {
         turnRight(-thetaDiff);  
-        theta-=thetaDiff;
     }
     
 
@@ -201,70 +212,123 @@ void setup() {
     accelerationL=true;
     accelerationR=true;
 
-    sensors.begin();
+    //sensors.begin();
 
 
 }
 
 void loop() {
 
-    if(missionL==1&&missionR==1){
-
-        goToTheta(1500,1250);
-        missionL=1.5;
-        missionR=1.5;
-           
-     }
-     if(missionL==2&&missionR==2){
-
-        goToDistance(1500,1250);
-
-        missionL=2.5;
-        missionR=2.5;
-           
-     }
-
-    sensors.readSensors();
-
-    
-    // Serial.print(VL53L);
-    // Serial.print("  ");
-    // Serial.print(VL53M);
-    // Serial.print("  ");
-    // Serial.println(VL53R);
-
-    Serial.print("theta= ");
-    Serial.print(theta);
-    Serial.print("x= ");
-    Serial.print(x_1);
-    Serial.print("y= ");
-    Serial.println(y_1);
-
-
-
-
     // if(missionL==1&&missionR==1){
 
-    //         goFoward(1100);
-    //         missionL=1.5;
-    //         missionR=1.5;
-            
+    //     goToTheta(1500,1250);
+    //     missionL=1.5;
+    //     missionR=1.5;
+           
+    //  }
+    //  if(missionL==2&&missionR==2){
+
+    //     goToDistance(1500,1250);
+
+    //     missionL=2.5;
+    //     missionR=2.5;
+           
+    //  }
+
+    //sensors.readSensors();
+
+    // if(VL53M<100){
+
+    //     distanceL=0;
+    //     distanceR=0;
+
+    // }
+
+    // if(avoidStageL==0&&avoidStageR==0){
+
+    // if(VL53M<100){
+
+    //     avoidStageL=1;
+    //     avoidStageR=1;
+    //     avoiding=true;
+        
+
+    //     if(VL53L<150){
+
+    //         turnRight(45);
+    //         avoidStageL=1.5;
+    //         avoidStageR=1.5;
     //     }
-    // if(missionL==2&&missionR==2){
+    //     else {
+            
+    //         turnLeft(45);
+    //         avoidStageL=1.5;
+    //         avoidStageR=1.5;
+    //     } 
+    // }
+    // }
+    // else if (avoidStageL==2&&avoidStageR==2){
+
+    //     goFoward(100);
+    //     avoidStageL=2.5;
+    //     avoidStageR=2.5;
+
+    // }
+    // else if (avoidStageL==3&&avoidStageR==3){
+
+    //     goToTheta(1500,1250);
+    //     avoidStageL=3.5;
+    //     avoidStageR=3.5;
+
+    // }
+    // else if (avoidStageL==4&&avoidStageR==4){
+
+    //     goToDistance(1500,1250);
+    //     avoidStageL=0;
+    //     avoidStageR=0;
+    //     avoiding=false;
+    // }
+
+    // Serial.print("stage= ");
+    // Serial.print (avoidStageL);
     
-    //         turnLeft(90);
-    //         missionL=2.5;
-    //         missionR=2.5;
+    // // Serial.print(VL53L);
+    // // Serial.print("  ");
+    // // Serial.print(VL53M);
+    // // Serial.print("  ");
+    // // Serial.println(VL53R);
+
+    // Serial.print("theta= ");
+    // Serial.print(theta);
+    // Serial.print("x= ");
+    // Serial.print(x_1);
+    // Serial.print("y= ");
+    // Serial.println(y_1);
+
+
+
+
+    if(missionL==1&&missionR==1){
+
+            goFoward(1100);
+            missionL=1.5;
+            missionR=1.5;
             
-    //     }
-    // if(missionL==3&&missionR==3){
+        }
+    if(missionL==2&&missionR==2){
+    
+            turnRight(90);
+            missionL=2.5;
+            missionR=2.5;
+            
+        }
+    if(missionL==3&&missionR==3){
     
         
-    //         goFoward(250);
-    //         missionL=3.5;
-    //         missionR=3.5;
+            goFoward(250);
+            missionL=3.5;
+            missionR=3.5;
             
-    //     }
-
+        }
     
 }
