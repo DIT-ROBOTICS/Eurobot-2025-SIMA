@@ -2,6 +2,9 @@
 #include <math.h> 
 #include "VL53L0X_Sensors.h"
 
+#include <WiFi.h>
+#include "ESPNowW.h"
+
 #define STEP_PIN_L 6   
 #define DIR_PIN_L 7    
 #define STEP_PIN_R 15   
@@ -27,7 +30,23 @@ float x_1=150, y_1=1800, theta=0;//sima 1 ; start (150,1800) ; stop(1000,1400)
 float distanceL=0, distanceR=0;
 float missionL=1, missionR=1, avoidStageL=0, avoidStageR=0;
 
-VL53L0X_Sensors sensors; 
+VL53L0X_Sensors sensors;
+
+typedef struct struct_message {
+    // char c[32];
+  
+    int sima_start;
+  
+  } struct_message;
+
+  // Create a struct_message called myData
+  struct_message myData;
+
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+    memcpy(&myData, incomingData, sizeof(myData));
+    Serial.print(myData.sima_start);
+
+}
 
 void IRAM_ATTR stepperCallbackL(void *arg){
     
@@ -49,7 +68,7 @@ void IRAM_ATTR stepperCallbackL(void *arg){
     if(accelerationL){
         stepDelayL-=0.004;
         
-        if(stepDelayL<=12||distanceL<=80){
+        if(stepDelayL<=15||distanceL<=80){
             accelerationL=false;
         }    
     }
@@ -80,7 +99,7 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     if(accelerationR){
         stepDelayR -= 0.004;
         
-        if(stepDelayR <= 12 || distanceR <= 80){
+        if(stepDelayR <= 15|| distanceR <= 80){
             accelerationR = false;
         }    
     }
@@ -206,6 +225,19 @@ void setup() {
     timerArgsR.name = "StepperTimerR";
     esp_timer_create(&timerArgsR, &stepperTimerR);
 
+    // Set device as a Wi-Fi Station
+    WiFi.mode(WIFI_STA);
+
+    // Init ESP-NOW
+    if (esp_now_init() != ERR_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+    }
+  
+    // Once ESPNow is successfully Init, we will register for recv CB to
+    // get recv packer info
+    esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
+
     // esp_timer_create_args_t timerArgsV = {};
     // timerArgsV.callback = &VL53Callback;
     // timerArgsV.name = "VL53Timer";
@@ -222,10 +254,15 @@ void setup() {
 
     //sensors.begin();
 
+    // while(myData.sima_start==0){
 
+
+    // }
 }
 
 void loop() {
+
+    // Serial.println(myData.sima_start);
 
     // if(missionL==1&&missionR==1){
 
@@ -314,29 +351,34 @@ void loop() {
     // Serial.println(y_1);
 
 
+  
 
-
+    while(myData.sima_start!=0){
     if(missionL==1&&missionR==1){
 
-            goFoward(150);
+            goFoward(1700);
             missionL=1.5;
             missionR=1.5;
             
         }
-    if(missionL==2&&missionR==2){
+    }
+
+
+
+    // if(missionL==2&&missionR==2){
     
-            turnLeft(90);
-            missionL=2.5;
-            missionR=2.5;
+    //         turnRight(90);
+    //         missionL=2.5;
+    //         missionR=2.5;
             
-        }
-    if(missionL==3&&missionR==3){
+    //     }
+    // if(missionL==3&&missionR==3){
     
         
-            goFoward(1750);
-            missionL=3.5;
-            missionR=3.5;
+    //         goFoward(200);
+    //         missionL=3.5;
+    //         missionR=3.5;
             
-        }
+    //     }
     
 }
