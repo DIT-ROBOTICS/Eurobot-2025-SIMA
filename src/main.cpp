@@ -3,7 +3,8 @@
 #include "VL53L0X_Sensors.h"
 
 #include <WiFi.h>
-#include "ESPNowW.h"
+#include <esp_wifi.h>
+#include "EspNowW.h"
 
 #define STEP_PIN_L 6   
 #define DIR_PIN_L 7    
@@ -28,7 +29,7 @@ bool rotatingL = false, rotatingR = false, going = false, reach_goal=false;
 bool avoiding = false;
 float x_1=0, y_1=0, theta=0, x_goal=0, y_goal=0;//sima 1 ; start (150,1800) ; stop(1000,1400)
 float distanceL=0, distanceR=0, range=40;
-float missionL=1, missionR=1, avoidStageL=0, avoidStageR=0;
+float missionL=1, missionR=1, avoidStageL=0, avoidStageR=0, shouldTurnLeft=0, shouldTurnRight=0;
 int step=0;
 
 VL53L0X_Sensors sensors;
@@ -143,8 +144,6 @@ void turnLeft(float degree){
     stepDelayL = 50; 
     stepDelayR = 50; 
     digitalWrite(DIR_PIN_L, HIGH);
-
-
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum*degree/360;
     distanceR = carCircum*degree/360;
@@ -203,8 +202,6 @@ void setup() {
 
     Serial.begin(9600);
 
-   
-
     pinMode(STEP_PIN_L, OUTPUT);
     pinMode(DIR_PIN_L, OUTPUT);
     pinMode(STEP_PIN_R, OUTPUT);
@@ -228,6 +225,8 @@ void setup() {
 
     // Set device as a Wi-Fi Station
     WiFi.mode(WIFI_STA);
+    esp_wifi_set_channel(9,WIFI_SECOND_CHAN_NONE);
+    
 
     // Init ESP-NOW
     if (esp_now_init() != ERR_OK) {
@@ -272,17 +271,17 @@ void setup() {
 void loop() {
 
     //signal from main
-    // Serial.println(myData.sima_start);
+    //Serial.println(myData.sima_start);
 
     while(!reach_goal){
      sensors.readSensors();
+    //Serial.println(myData.sima_start);
     // Serial.print("L=");
     // Serial.print(VL53L);
     // Serial.print("  M=");
     // Serial.print(VL53M);
     // Serial.print("  R=");
     // Serial.print(VL53R);
-
  
     if(step>3000){
         x_1+=3000*lengthPerStep*cos(theta * 0.01745329);//pi/180
@@ -332,7 +331,9 @@ void loop() {
     }
 
 
-    Serial.print(step);
+    // Serial.print(distanceL);
+    Serial.print(" avoid= ");
+    Serial.print(avoidStageL);
     Serial.print(" theta= ");
     Serial.print(theta);
     Serial.print("  x= ");
@@ -346,6 +347,7 @@ void loop() {
         goToTheta(x_goal, y_goal);
          missionL=1.5;
          missionR=1.5;
+
            
     }
     if(missionL==2&&missionR==2){
@@ -366,6 +368,7 @@ void loop() {
         decelerationL=0;
         decelerationR=0;
     }
+    if(avoidStageL!=1){
     if(VL53M<150){
         distanceL=0;
         distanceR=0;
@@ -374,44 +377,69 @@ void loop() {
         decelerationR=0;
         avoidStageL=1;
         avoidStageR=1;
+        shouldTurnRight=1;
+        if(VL53R<150)
+        shouldTurnLeft=1;
 
     }
+
+    }
+
+   
     if(avoidStageL==1&&avoidStageR==1){
-      
-        turnRight(60);
+        
+
+        if(VL53R<150){
+            turnLeft(360);
+        }
+        else turnRight(360);
+
+        if(VL53M>250){
+        distanceL=0;
+        distanceR=0;
+        rotatingL=false;
+        rotatingR=false;
         avoidStageL=1.5;
-        avoidStageR=1.5;
+        avoidStageR=1.5;                                                                                                                                                                                                                                                                        
+
+        }
+
            
     }
     if(avoidStageL==2&&avoidStageR==2){
-      
-        goFoward(300);
-        avoidStageL=2.5;
-        avoidStageR=2.5;
-           
+        
+            goFoward(250);
+            avoidStageL=2.5;
+            avoidStageR=2.5;
+            
     }    
     if(avoidStageL==3&&avoidStageR==3){
-      
-        goToTheta(x_goal, y_goal);
-        avoidStageL=3.5;
-        avoidStageR=3.5;
-           
+        
+            goToTheta(x_goal, y_goal);
+            avoidStageL=3.5;
+            avoidStageR=3.5;
+            
     }
     if(avoidStageL==4&&avoidStageR==4){
-      
-        goToDistance(x_goal, y_goal);
-        avoidStageL=0;
-        avoidStageR=0;
-           
+        
+            goToDistance(x_goal, y_goal);
+            avoidStageL=0;
+            avoidStageR=0;
+            
     }
 
-    if(abs(x_1-x_goal)<range&&abs(y_1-y_goal)<range){
 
-        reach_goal=1;
+    if(y_1<1500){
+        if(x_1*2+y_1>=5000&&-x_1*0.545+y_1>=354.55){
 
+            reach_goal=1;
+
+        }
     }
 }    
-    
+ 
+    distanceL=0;
+    distanceR=0;
 
 
 
