@@ -4,7 +4,10 @@
 #include <Adafruit_NeoPixel.h>
 
 enum led_mode {
-  DEFAULT_MODE
+  DEFAULT_MODE,
+  COLOR_WIPE,
+  BREATHING,
+  RAINBOW,
 };
 
 extern Adafruit_NeoPixel strip;

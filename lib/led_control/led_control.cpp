@@ -5,10 +5,11 @@
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 // use volatile to ensure the variable is updated correctly in ISR
 volatile int mode = 0;
-volatile int sensor_mode = 0;
-unsigned long last_override_time = 0;
-const unsigned long override_duration = LED_OVR_DURATION;
-int current_mode;
+
+// Declare dynamic RGB variables globally
+int dynamicR = 255;
+int dynamicG = 255;
+int dynamicB = 255;
 
 void initLED() {
   strip.begin();
@@ -122,29 +123,16 @@ void rainbowNonBlocking(int wait) {
 
 void LEDTask(void* pvParameters) {
   for (;;) {
-    if (mode == SIMA_CMD || mode == EME_ENABLE || mode == EME_DISABLE) {
-      if (millis() - last_override_time > override_duration) {
-        mode = -1;
-      }
-    }
 
-    int current_mode = (mode == -1) ? sensor_mode : mode;
-
-    switch (current_mode) {
-      case SIMA_CMD:
-        breathingEffectNonBlocking(strip.Color(255, 255, 0), 5);
+    switch (mode) {
+      case BREATHING:
+        breathingEffectNonBlocking(strip.Color(dynamicR, dynamicG, dynamicB), 5);
         break;
-      case EME_DISABLE:
-        breathingEffectNonBlocking(strip.Color(255, 0, 0), 5);
+      case COLOR_WIPE:
+        colorWipeNonBlocking(strip.Color(dynamicR, dynamicG, dynamicB), 50);
         break;
-      case EME_ENABLE:
-        breathingEffectNonBlocking(strip.Color(0, 255, 0), 5);
-        break;
-      case BATT_DISCONNECTED:
-        colorWipeNonBlocking(strip.Color(0, 0, 255), 50);
-        break;
-      case BATT_LOW:
-        colorWipeNonBlocking(strip.Color(255, 0, 0), 50);
+      case RAINBOW:
+        rainbowNonBlocking(5); // Adjusted wait for smoother rainbow
         break;
       default:
         rainbowNonBlocking(5); // Adjusted wait for smoother rainbow

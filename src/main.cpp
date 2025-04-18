@@ -4,8 +4,57 @@
 #include "VL53L0X_Sensors.h"
 
 #include <WiFi.h>
-#include <esp_wifi.h>
-#include "EspNowW.h"
+#include <ESPmDNS.h>
+#include <esp_wifi.h> 
+#include <esp_now.h>
+
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <ElegantOTA.h>
+#include <WebSerial.h>
+#include <NetWizard.h>
+#include <ESPDash.h>
+
+#include "config.h"
+#include "led_control.h"
+
+AsyncWebServer server(80);
+unsigned long ota_progress_millis = 0;
+
+// Initialize ESP-DASH
+ESPDash dashboard(&server, "/dashboard", true);    // <--- We initialize ESP-DASH at "/dashboard" URL so that NetWizard logic is not distrupted
+
+/* 
+  Dashboard Cards 
+  Format - (Dashboard Instance, Card Type, Card Name, Card Symbol(optional) )
+*/
+Card temperature(&dashboard, TEMPERATURE_CARD, "Temperature", "°C");
+Card humidity(&dashboard, HUMIDITY_CARD, "Humidity", "%");
+/* 
+  Status Card
+  Valid Arguments: (ESPDash dashboard, Card Type, const char* name, const char* status (optional) )
+*/
+Card status(&dashboard, STATUS_CARD, "Test Status", DASH_STATUS_SUCCESS);
+/* 
+  Button Card
+  Valid Arguments: (ESPDash dashboard, Card Type, const char* name)
+*/
+Card button(&dashboard, BUTTON_CARD, "Test Button");
+/* 
+  Slider Card
+  Valid Arguments: (ESPDash dashboard, Card Type, const char* name, const char* symbol (optional), int min, int max)
+*/
+Card slider(&dashboard, SLIDER_CARD, "Test Slider", "", 0, 255, 1);
+
+
+
+// Initialize NetWizard
+NetWizard NW(&server);
+// Setup configuration parameters
+// NetWizardParameter nw_header(&NW, NW_HEADER, "MQTT");
+// NetWizardParameter nw_divider1(&NW, NW_DIVIDER);
+// NetWizardParameter nw_mqtt_host(&NW, NW_INPUT, "Host", "", "mqtt.example.com");
+// NetWizardParameter nw_mqtt_port(&NW, NW_INPUT, "Port", "", "1883");
 
 #define STEP_PIN_L 6   
 #define DIR_PIN_L 7    
@@ -39,6 +88,8 @@ VL53L0X_Sensors sensors;
 Servo servoL;
 Servo servoR;
 
+bool start_reach_goal = false;
+
 typedef struct struct_message {
     // char c[32];
   
@@ -51,9 +102,33 @@ typedef struct struct_message {
 
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     memcpy(&myData, incomingData, sizeof(myData));
-    Serial.print(myData.sima_start);
+    WebSerial.print(myData.sima_start);
 
 }
+
+void onOTAStart() {
+    // Log when OTA has started
+    WebSerial.println("OTA update started!");
+    // <Add your own code here>
+  }
+  
+  void onOTAProgress(size_t current, size_t final) {
+    // Log every 1 second
+    if (millis() - ota_progress_millis > 1000) {
+      ota_progress_millis = millis();
+      WebSerial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
+    }
+  }
+  
+  void onOTAEnd(bool success) {
+    // Log when OTA has finished
+    if (success) {
+      WebSerial.println("OTA update finished successfully!");
+    } else {
+      WebSerial.println("There was an error during OTA update!");
+    }
+    // <Add your own code here>
+  }
 
 void IRAM_ATTR stepperCallbackL(void *arg){
     
@@ -207,8 +282,8 @@ void goToTheta(float x_2, float y_2) {
     float dy = y_2 - y_1;
 
     float thetaGoal = atan2f(dy, dx) * 180 / M_PI;
-    Serial.print(thetaGoal);
-    Serial.print("  ");
+    WebSerial.print(thetaGoal);
+    WebSerial.print("  ");
     float thetaDiff = thetaGoal - theta;
     if (thetaDiff > 180) thetaDiff -= 360;
     if (thetaDiff < -180) thetaDiff += 360;
@@ -231,11 +306,55 @@ void goToDistance(float x_2, float y_2){
 
 }
 
+TaskHandle_t dashTaskHandle = NULL;
+
+void dashTask(void *parameter) {
+    for (;;) {
+        /* Update Card Values */
+        temperature.update((int)random(0, 50));
+        humidity.update((int)random(0, 100));
+        
+        /* Send Updates to our Dashboard (realtime) */
+        dashboard.sendUpdates();
+
+        vTaskDelay(5000 / portTICK_PERIOD_MS); // Delay for 5 seconds
+    }
+}
+
+// Define RTOS task handles
+TaskHandle_t webSerialTaskHandle = NULL;
+TaskHandle_t elegantOTATaskHandle = NULL;
+TaskHandle_t netWizardTaskHandle = NULL;
+TaskHandle_t ledUpdateTaskHandle = NULL;
+
+// Function to handle WebSerial in a separate task
+void webSerialTask(void *parameter) {
+    for (;;) {
+        WebSerial.loop();
+        vTaskDelay(1); // Yield to other tasks
+    }
+}
+
+// Function to handle ElegantOTA in a separate task
+void elegantOTATask(void *parameter) {
+    for (;;) {
+        ElegantOTA.loop();
+        vTaskDelay(1); // Yield to other tasks
+    }
+}
+
+// Function to handle NetWizard in a separate task
+void netWizardTask(void *parameter) {
+    for (;;) {
+        NW.loop();
+        vTaskDelay(1); // Yield to other tasks
+    }
+}
 
 void setup() {
 
 
-    Serial.begin(9600);
+    Serial.begin(115200);
 
     pinMode(STEP_PIN_L, OUTPUT);
     pinMode(DIR_PIN_L, OUTPUT);
@@ -261,14 +380,233 @@ void setup() {
     timerArgsR.name = "StepperTimerR";
     esp_timer_create(&timerArgsR, &stepperTimerR);
 
-    // Set device as a Wi-Fi Station
-    WiFi.mode(WIFI_STA);
-    esp_wifi_set_channel(9,WIFI_SECOND_CHAN_NONE);
-    
+    // ----------------------------
+    // Configure NetWizard Strategy
+    // ----------------------------
+    // BLOCKING - Connect to WiFi and wait till portal is active
+    // (blocks execution after autoConnect)
+    // 
+    // NON_BLOCKING - Connect to WiFi and proceed while portal is active in background
+    // (does not block execution after autoConnect)
+    NW.setStrategy(NetWizardStrategy::BLOCKING);
 
+    // Listen for connection status changes
+    NW.onConnectionStatus([](NetWizardConnectionStatus status) {
+        String status_str = "";
+
+        switch (status) {
+        case NetWizardConnectionStatus::DISCONNECTED:
+            status_str = "Disconnected";
+            break;
+        case NetWizardConnectionStatus::CONNECTING:
+            status_str = "Connecting";
+            break;
+        case NetWizardConnectionStatus::CONNECTED:
+            status_str = "Connected";
+            break;
+        case NetWizardConnectionStatus::CONNECTION_FAILED:
+            status_str = "Connection Failed";
+            break;
+        case NetWizardConnectionStatus::CONNECTION_LOST:
+            status_str = "Connection Lost";
+            break;
+        case NetWizardConnectionStatus::NOT_FOUND:
+            status_str = "Not Found";
+            break;
+        default:
+            status_str = "Unknown";
+        }
+
+        Serial.printf("NW connection status changed: %s\n", status_str.c_str());
+        if (status == NetWizardConnectionStatus::CONNECTED) {
+        // Local IP
+        Serial.printf("Local IP: %s\n", NW.localIP().toString().c_str());
+        // Gateway IP
+        Serial.printf("Gateway IP: %s\n", NW.gatewayIP().toString().c_str());
+        // Subnet mask
+        Serial.printf("Subnet mask: %s\n", NW.subnetMask().toString().c_str());
+        }
+    });
+
+    // Listen for portal state changes
+    NW.onPortalState([](NetWizardPortalState state) {
+        String state_str = "";
+
+        switch (state) {
+        case NetWizardPortalState::IDLE:
+            state_str = "Idle";
+            break;
+        case NetWizardPortalState::CONNECTING_WIFI:
+            state_str = "Connecting to WiFi";
+            break;
+        case NetWizardPortalState::WAITING_FOR_CONNECTION:
+            state_str = "Waiting for Connection";
+            break;
+        case NetWizardPortalState::SUCCESS:
+            state_str = "Success";
+            break;
+        case NetWizardPortalState::FAILED:
+            state_str = "Failed";
+            break;
+        case NetWizardPortalState::TIMEOUT:
+            state_str = "Timeout";
+            break;
+        default:
+            state_str = "Unknown";
+        }
+
+        Serial.printf("NW portal state changed: %s\n", state_str.c_str());
+    });
+
+    NW.onConfig([&]() {
+        Serial.println("NW onConfig Received");
+
+        // Print new parameter values
+        // Serial.printf("Host: %s\n", nw_mqtt_host.getValueStr().c_str());
+        // Serial.printf("Port: %s\n", nw_mqtt_port.getValueStr().c_str());
+        return true; // <-- return true to approve request, false to reject
+    });
+
+    // Start NetWizard
+    NW.autoConnect(HOSTNAME, "");
+    
+    // Check if configured
+    if (NW.isConfigured()) {
+        Serial.println("Device is configured");
+    } else {
+        Serial.println("Device is not configured");
+    }
+
+    // // Set device as a Wi-Fi Station
+    // WiFi.mode(WIFI_STA);
+    // WiFi.begin(ssid, password);
+    
+    // // Wait for connection
+    // while (WiFi.status() != WL_CONNECTED) {
+    //     delay(500);
+    //     WebSerial.print(".");
+    // }
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+
+    if (!MDNS.begin(HOSTNAME)) {
+        Serial.println("mDNS init failed");
+    } else {
+        Serial.println("mDNS started");
+    }
+
+    uint8_t primaryChan;
+    wifi_second_chan_t secondChan;
+    esp_wifi_get_channel(&primaryChan, &secondChan);
+    esp_wifi_set_channel(primaryChan, secondChan);
+    WebSerial.print("Channel: ");
+    WebSerial.print(primaryChan);
+
+    // Internal rewrite for ESP-DASH dashboard
+    server.rewrite("/", "/dashboard").setFilter(ON_STA_FILTER);    // <---  Add this server.rewrite so that we display ESP-DASH at "/" on STA connections
+    
+    /* Status card updater - can be used anywhere (apart from global scope) */
+    status.update("Warning message", DASH_STATUS_WARNING);
+    /* Button card callback */
+    button.attachCallback([&](int value){
+        WebSerial.println("Button Callback Triggered: "+String((value == 1)?"true":"false"));
+        /* Button card updater - you need to update the button with latest value upon firing of callback */
+        button.update(value);
+        /* Send update to dashboard */
+        dashboard.sendUpdates();
+    });
+    /* Slider card callback */
+    slider.attachCallback([&](float value){
+        Serial.println("Slider Callback Triggered: "+String(value));
+        /* Slider card updater - you need to update the slider with latest value upon firing of callback */
+        slider.update(value);
+        /* Send update to dashboard */
+        dashboard.sendUpdates();
+    });
+
+
+    WebSerial.begin(&server);     // Initialize WebSerial
+
+    // Attach a callback function to handle incoming messages
+    WebSerial.onMessage([](uint8_t *data, size_t len) {
+        WebSerial.printf("Received %lu bytes from WebSerial: ", len);
+        Serial.write(data, len);
+        WebSerial.println();
+        WebSerial.println("Received Data...");
+        String d = "";
+        for(size_t i = 0; i < len; i++){
+            d += char(data[i]);
+        }
+        WebSerial.println(d);
+
+        // Check if the received data is "1" and set the flag
+        if (d == "GO") {
+            start_reach_goal = true;
+            WebSerial.println("Starting reach_goal loop...");
+        }
+
+        if (d == "RESTORE") {
+            WebSerial.println("Factory reset command received. Erasing NW configuration...");
+            NW.erase();
+            delay(1000);
+            WebSerial.println("Restarting ESP...");
+            ESP.restart();
+        }
+
+        if (d == "RESET") {
+            WebSerial.println("Reset command received. Restarting ESP...");
+            ESP.restart();
+        }
+
+        // Parse the received data
+        if (d.startsWith("RGB")) {
+            int r, g, b;
+            if (sscanf(d.c_str(), "RGB %d %d %d", &r, &g, &b) == 3) {
+                WebSerial.printf("Setting RGB to R=%d, G=%d, B=%d\n", r, g, b);
+                uint32_t color = strip.Color(r, g, b);
+                for (int i = 0; i < strip.numPixels(); i++) {
+                    strip.setPixelColor(i, color);
+                }
+                strip.show();
+            } else {
+                WebSerial.println("Invalid RGB format. Use: RGB <R> <G> <B>");
+            }
+        } else if (d.startsWith("BRIGHTNESS")) {
+            int brightness;
+            if (sscanf(d.c_str(), "BRIGHTNESS %d", &brightness) == 1) {
+                WebSerial.printf("Setting brightness to %d\n", brightness);
+                strip.setBrightness(brightness);
+                strip.show();
+            } else {
+                WebSerial.println("Invalid BRIGHTNESS format. Use: BRIGHTNESS <value>");
+            }
+        } else if (d.startsWith("MODE")) {
+            int modeValue;
+            if (sscanf(d.c_str(), "MODE %d", &modeValue) == 1) {
+                WebSerial.printf("Setting mode to %d\n", modeValue);
+                mode = modeValue;
+            } else {
+                WebSerial.println("Invalid MODE format. Use: MODE <value>");
+            }
+        } else {
+            WebSerial.println("Unknown command. Use: RGB, BRIGHTNESS, or MODE");
+        }
+    });
+
+    ElegantOTA.begin(&server);    // Initialize ElegantOTA
+    // ElegantOTA callbacks
+    ElegantOTA.onStart(onOTAStart);
+    ElegantOTA.onProgress(onOTAProgress);
+    ElegantOTA.onEnd(onOTAEnd);
+    // Disable Auto Reboot
+    ElegantOTA.setAutoReboot(true);
+
+    server.begin();
+
+    
     // Init ESP-NOW
     if (esp_now_init() != ERR_OK) {
-    Serial.println("Error initializing ESP-NOW");
+    WebSerial.println("Error initializing ESP-NOW");
     return;
     }
     // Once ESPNow is successfully Init, we will register for recv CB to
@@ -287,16 +625,16 @@ void setup() {
     sensors.begin();
     
     //checking I2C setting
-    Serial.println("\nI2C Scanner Starting...");
+    WebSerial.println("\nI2C Scanner Starting...");
   
     for (uint8_t address = 1; address < 127; address++) {
       Wire.beginTransmission(address);
       if (Wire.endTransmission() == 0) {
-        Serial.print("I2C Device Found at 0x");
-        Serial.println(address, HEX);
+        WebSerial.print("I2C Device Found at 0x");
+        WebSerial.println(address, HEX);
       }
     }
-    Serial.println("Scan Done.");
+    WebSerial.println("Scan Done.");
 
     //start point
     x_1=150 ;
@@ -304,260 +642,337 @@ void setup() {
     x_goal=1900;
     y_goal=1400;
 
+    // Create a task to run ElegantOTA and WebSerial on the second core
+    xTaskCreatePinnedToCore(
+        dashTask,   // Task function
+        "DashTask",   // Name of the task
+        10000,               // Stack size (in bytes)
+        NULL,               // Task input parameter
+        1,                  // Priority of the task
+        &dashTaskHandle, // Task handle
+        1                   // Core to run the task on (0 for core 0, 1 for core 1)
+    );
+
+    // Create separate tasks for WebSerial, ElegantOTA, and NetWizard
+    xTaskCreatePinnedToCore(
+        webSerialTask,   // Task function
+        "WebSerialTask",   // Name of the task
+        4096,               // Stack size (in bytes)
+        NULL,               // Task input parameter
+        1,                  // Priority of the task
+        &webSerialTaskHandle, // Task handle
+        1                   // Core to run the task on (0 for core 0, 1 for core 1)
+    );
+
+    xTaskCreatePinnedToCore(
+        elegantOTATask,   // Task function
+        "ElegantOTATask",   // Name of the task
+        4096,               // Stack size (in bytes)
+        NULL,               // Task input parameter
+        1,                  // Priority of the task
+        &elegantOTATaskHandle, // Task handle
+        1                   // Core to run the task on (0 for core 0, 1 for core 1)
+    );
+
+    xTaskCreatePinnedToCore(
+        netWizardTask,   // Task function
+        "NetWizardTask",   // Name of the task
+        4096,               // Stack size (in bytes)
+        NULL,               // Task input parameter
+        1,                  // Priority of the task
+        &netWizardTaskHandle, // Task handle
+        1                   // Core to run the task on (0 for core 0, 1 for core 1)
+    );
+
+    // Initialize LED control
+    initLED();
+
+    // Create a task to handle LED effects
+    xTaskCreatePinnedToCore(
+        LEDTask,   // Task function
+        "LEDTask",   // Name of the task
+        4096,               // Stack size (in bytes)
+        NULL,               // Task input parameter
+        1,                  // Priority of the task
+        NULL,               // Task handle
+        1                   // Core to run the task on (0 for core 0, 1 for core 1)
+    );
+
+    // Create a task to handle LED updates
+    xTaskCreatePinnedToCore(
+        LEDTask,   // Task function
+        "LEDUpdateTask",   // Name of the task
+        4096,               // Stack size (in bytes)
+        NULL,               // Task input parameter
+        1,                  // Priority of the task
+        &ledUpdateTaskHandle, // Task handle
+        1                   // Core to run the task on (0 for core 0, 1 for core 1)
+    );
+
 }
 
 void loop() {
 
     //signal from main
-    //Serial.println(myData.sima_start);
+    //WebSerial.println(myData.sima_start);
 
-    while(!reach_goal){
-     sensors.readSensors();
-
-    //Serial.println(myData.sima_start);
-    // Serial.print("L=");
-    // Serial.print(VL53L);
-    // Serial.print("  M=");
-    // Serial.print(VL53M);
-    // Serial.print("  R=");
-    // Serial.print(VL53R);
- 
-    if(step>3000){
-        x_1+=3000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=3000*lengthPerStep*sin(theta * 0.01745329);
-        step-=3000;
-    }
-    else if(step>2000){
-        x_1+=2000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=2000*lengthPerStep*sin(theta * 0.01745329);
-        step-=2000;
-    }
-    else if(step>1000){
-        x_1+=1000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=1000*lengthPerStep*sin(theta * 0.01745329);
-        step-=1000;
-    }
-    else if(step>400){
-        x_1+=400*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=400*lengthPerStep*sin(theta * 0.01745329);
-        step-=400;
-    }  
-    else if(step>100){
-        x_1+=100*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=100*lengthPerStep*sin(theta * 0.01745329);
-        step-=100;
-    }    
-    else if(step>20){
-        x_1+=20*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=20*lengthPerStep*sin(theta * 0.01745329);
-        step-=20;
-    }
-    else if(step>5){
-        x_1+=5*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=5*lengthPerStep*sin(theta * 0.01745329);
-        step-=5;
-    }
-    else if(step>0){
-        x_1+=lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1+=lengthPerStep*sin(theta * 0.01745329);
-        step-=1;
-    }
-    if(step<-3000){
-        x_1-=3000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=3000*lengthPerStep*sin(theta * 0.01745329);
-        step+=3000;
-    }
-    else if(step<-2000){
-        x_1-=2000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=2000*lengthPerStep*sin(theta * 0.01745329);
-        step+=2000;
-    }
-    else if(step<-1000){
-        x_1-=1000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=1000*lengthPerStep*sin(theta * 0.01745329);
-        step+=1000;
-    }
-    else if(step<-400){
-        x_1-=400*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=400*lengthPerStep*sin(theta * 0.01745329);
-        step+=400;
-    }  
-    else if(step<-100){
-        x_1-=100*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=100*lengthPerStep*sin(theta * 0.01745329);
-        step+=100;
-    }    
-    else if(step<-20){
-        x_1-=20*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=20*lengthPerStep*sin(theta * 0.01745329);
-        step+=20;
-    }
-    else if(step<-5){
-        x_1-=5*lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=5*lengthPerStep*sin(theta * 0.01745329);
-        step+=5;
-    }
-    else if(step>0){
-        x_1-=lengthPerStep*cos(theta * 0.01745329);//pi/180
-        y_1-=lengthPerStep*sin(theta * 0.01745329);
-        step+=1;
-    }
-    if(theta>360){
-        theta-=360;
-    }
-    if(theta<-360){
-        theta+=360;
-    }
-
-    // Serial.print(distanceL);
-    // Serial.print(" avoid= ");
-    // Serial.print(avoidStageL);
-    // Serial.print(" escape= ");
-    // Serial.print(escape);
-    // Serial.print(" adjust= ");
-    // Serial.print(adjust);
-    // Serial.print(" theta= ");
-    // Serial.print(theta);
-    // Serial.print("  x= ");
-    // Serial.print(x_1);
-    // Serial.print("  y= ");
-    // Serial.println(y_1);
-
-    if(missionL==1&&missionR==1){
-        goToTheta(x_goal, y_goal);
-         missionL=1.5;
-         missionR=1.5;   
-    }
-    if(missionL==2&&missionR==2){
-        goToDistance(x_goal, y_goal);
-         missionL=2.5;
-         missionR=2.5;
-    }
-    if(VL53M<250||VL53R<100){
-        decelerationL=1;
-        decelerationR=1;
-    }
-    else if(VL53L<100){
-        decelerationL=1;
-        decelerationR=1;
-    }
-    else{
-        decelerationL=0;
-        decelerationR=0;
-    }
-    if(avoidStageL!=1){
-        if(VL53M<150){
-            distanceL=0;
-            distanceR=0;
-            going=false;
-            goingBack=false;
-            decelerationL=0;
-            decelerationR=0;
-            avoidStageL=1;
-            avoidStageR=1;
-            if(VL53R<100){
-                escape=1;
+    if (start_reach_goal) {
+        while (!reach_goal) {
+            if(missionL==1&&missionR==1){
+                goToTheta(x_goal,y_goal);
+                goToDistance(x_goal,y_goal);
             }
-        }
-        if(VL53R<70){
-            distanceL=0;
-            distanceR=0;
-            going=false;
-            goingBack=false;
-            decelerationL=0;
-            decelerationR=0;
-            avoidStageL=1;
-            avoidStageR=1;
-            adjust=3;
-        }
-        if(VL53L<70){
-            distanceL=0;
-            distanceR=0;
-            going=false;
-            goingBack=false;
-            decelerationL=0;
-            decelerationR=0;
-            avoidStageL=1;
-            avoidStageR=1;
-            adjust=1;
-        }
-    }
-    if(avoidStageL==1&&avoidStageR==1){
-        
-        if(escape==0&&adjust==0){
-            turnRight(360);        
-
-            if(VL53M>250){
-                distanceL=0;
-                distanceR=0;
-                rotatingL=false;
-                rotatingR=false;
-                avoidStageL=1.5;
-                avoidStageR=1.5;                                                                                                                                                                                                                                                                        
-
+            else if(missionL==2&&missionR==2){
+                goToTheta(x_1,y_1);
+                goToDistance(x_1,y_1);
             }
-        }
-        else if(escape==1){
-            goBackward(200);
-            escape=1.5;
-        }
-        else if(escape==2){
-            turnRight(90);
-            escape=2.5;
-        }
-        else if(escape==3){
-            distanceL=0;
-            distanceR=0;
-            escape=0;
-            rotatingL=false;
-            rotatingR=false;
-            avoidStageL=2;
-            avoidStageR=2; 
-        }
-        else if(adjust==1){
-            turnRight(20);
-            adjust=1.5;
-        }
-        else if(adjust==3){
-            turnLeft(20);
-            adjust=1.5;
-        }        
-        else if(adjust==2){
-            adjust=0;
-            avoidStageL=2;
-            avoidStageR=2; 
-        }
+            sensors.readSensors();
+
+            //WebSerial.println(myData.sima_start);
+            // WebSerial.print("L=");
+            // WebSerial.print(VL53L);
+            // WebSerial.print("  M=");
+            // WebSerial.print(VL53M);
+            // WebSerial.print("  R=");
+            // WebSerial.print(VL53R);
         
-    }
-    if(avoidStageL==2&&avoidStageR==2){
-        
-            goFoward(250);
-            avoidStageL=2.5;
-            avoidStageR=2.5;
-            
-    }    
-    if(avoidStageL==3&&avoidStageR==3){
-        
-            goToTheta(x_goal, y_goal);
-            avoidStageL=3.5;
-            avoidStageR=3.5;
-            
-    }
-    if(avoidStageL==4&&avoidStageR==4){
-        
-            goToDistance(x_goal, y_goal);
-            avoidStageL=0;
-            avoidStageR=0;
-            
-    }
+            if(step>3000){
+                x_1+=3000*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=3000*lengthPerStep*sin(theta * 0.01745329);
+                step-=3000;
+            }
+            else if(step>2000){
+                x_1+=2000*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=2000*lengthPerStep*sin(theta * 0.01745329);
+                step-=2000;
+            }
+            else if(step>1000){
+                x_1+=1000*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=1000*lengthPerStep*sin(theta * 0.01745329);
+                step-=1000;
+            }
+            else if(step>400){
+                x_1+=400*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=400*lengthPerStep*sin(theta * 0.01745329);
+                step-=400;
+            }  
+            else if(step>100){
+                x_1+=100*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=100*lengthPerStep*sin(theta * 0.01745329);
+                step-=100;
+            }    
+            else if(step>20){
+                x_1+=20*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=20*lengthPerStep*sin(theta * 0.01745329);
+                step-=20;
+            }
+            else if(step>5){
+                x_1+=5*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=5*lengthPerStep*sin(theta * 0.01745329);
+                step-=5;
+            }
+            else if(step>0){
+                x_1+=lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1+=lengthPerStep*sin(theta * 0.01745329);
+                step-=1;
+            }
+            if(step<-3000){
+                x_1-=3000*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=3000*lengthPerStep*sin(theta * 0.01745329);
+                step+=3000;
+            }
+            else if(step<-2000){
+                x_1-=2000*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=2000*lengthPerStep*sin(theta * 0.01745329);
+                step+=2000;
+            }
+            else if(step<-1000){
+                x_1-=1000*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=1000*lengthPerStep*sin(theta * 0.01745329);
+                step+=1000;
+            }
+            else if(step<-400){
+                x_1-=400*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=400*lengthPerStep*sin(theta * 0.01745329);
+                step+=400;
+            }  
+            else if(step<-100){
+                x_1-=100*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=100*lengthPerStep*sin(theta * 0.01745329);
+                step+=100;
+            }    
+            else if(step<-20){
+                x_1-=20*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=20*lengthPerStep*sin(theta * 0.01745329);
+                step+=20;
+            }
+            else if(step<-5){
+                x_1-=5*lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=5*lengthPerStep*sin(theta * 0.01745329);
+                step+=5;
+            }
+            else if(step>0){
+                x_1-=lengthPerStep*cos(theta * 0.01745329);//pi/180
+                y_1-=lengthPerStep*sin(theta * 0.01745329);
+                step+=1;
+            }
+            if(theta>360){
+                theta-=360;
+            }
+            if(theta<-360){
+                theta+=360;
+            }
+
+            // WebSerial.print(distanceL);
+            // WebSerial.print(" avoid= ");
+            // WebSerial.print(avoidStageL);
+            // WebSerial.print(" escape= ");
+            // WebSerial.print(escape);
+            // WebSerial.print(" adjust= ");
+            // WebSerial.print(adjust);
+            // WebSerial.print(" theta= ");
+            // WebSerial.print(theta);
+            // WebSerial.print("  x= ");
+            // WebSerial.print(x_1);
+            // WebSerial.print("  y= ");
+            // WebSerial.println(y_1);
+
+            if(missionL==1&&missionR==1){
+                goToTheta(x_goal, y_goal);
+                missionL=1.5;
+                missionR=1.5;   
+            }
+            if(missionL==2&&missionR==2){
+                goToDistance(x_goal, y_goal);
+                missionL=2.5;
+                missionR=2.5;
+            }
+            if(VL53M<250||VL53R<100){
+                decelerationL=1;
+                decelerationR=1;
+            }
+            else if(VL53L<100){
+                decelerationL=1;
+                decelerationR=1;
+            }
+            else{
+                decelerationL=0;
+                decelerationR=0;
+            }
+            if(avoidStageL!=1){
+                if(VL53M<150){
+                    distanceL=0;
+                    distanceR=0;
+                    going=false;
+                    goingBack=false;
+                    decelerationL=0;
+                    decelerationR=0;
+                    avoidStageL=1;
+                    avoidStageR=1;
+                    if(VL53R<100){
+                        escape=1;
+                    }
+                }
+                if(VL53R<70){
+                    distanceL=0;
+                    distanceR=0;
+                    going=false;
+                    goingBack=false;
+                    decelerationL=0;
+                    decelerationR=0;
+                    avoidStageL=1;
+                    avoidStageR=1;
+                    adjust=3;
+                }
+                if(VL53L<70){
+                    distanceL=0;
+                    distanceR=0;
+                    going=false;
+                    goingBack=false;
+                    decelerationL=0;
+                    decelerationR=0;
+                    avoidStageL=1;
+                    avoidStageR=1;
+                    adjust=1;
+                }
+            }
+            if(avoidStageL==1&&avoidStageR==1){
+                
+                if(escape==0&&adjust==0){
+                    turnRight(360);        
+
+                    if(VL53M>250){
+                        distanceL=0;
+                        distanceR=0;
+                        rotatingL=false;
+                        rotatingR=false;
+                        avoidStageL=1.5;
+                        avoidStageR=1.5;                                                                                                                                                                                                                                                                        
+
+                    }
+                }
+                else if(escape==1){
+                    goBackward(200);
+                    escape=1.5;
+                }
+                else if(escape==2){
+                    turnRight(90);
+                    escape=2.5;
+                }
+                else if(escape==3){
+                    distanceL=0;
+                    distanceR=0;
+                    escape=0;
+                    rotatingL=false;
+                    rotatingR=false;
+                    avoidStageL=2;
+                    avoidStageR=2; 
+                }
+                else if(adjust==1){
+                    turnRight(20);
+                    adjust=1.5;
+                }
+                else if(adjust==3){
+                    turnLeft(20);
+                    adjust=1.5;
+                }        
+                else if(adjust==2){
+                    adjust=0;
+                    avoidStageL=2;
+                    avoidStageR=2; 
+                }
+                
+            }
+            if(avoidStageL==2&&avoidStageR==2){
+                
+                    goFoward(250);
+                    avoidStageL=2.5;
+                    avoidStageR=2.5;
+                    
+            }    
+            if(avoidStageL==3&&avoidStageR==3){
+                
+                    goToTheta(x_goal, y_goal);
+                    avoidStageL=3.5;
+                    avoidStageR=3.5;
+                    
+            }
+            if(avoidStageL==4&&avoidStageR==4){
+                
+                    goToDistance(x_goal, y_goal);
+                    avoidStageL=0;
+                    avoidStageR=0;
+                    
+            }
 
 
-    if(y_1<1500){
-        if(x_1*2+y_1>=5000&&-x_1*0.545+y_1>=354.55){
-            reach_goal=1;
-        }
+            if(y_1<1500){
+                if(x_1*2+y_1>=5000&&-x_1*0.545+y_1>=354.55){
+                    reach_goal=1;
+                }
+            }
+        }    
     }
-}    
  
     distanceL=0;
     distanceR=0;
@@ -578,7 +993,4 @@ void loop() {
     //     }
     // }
 
-
-
-    
 }
