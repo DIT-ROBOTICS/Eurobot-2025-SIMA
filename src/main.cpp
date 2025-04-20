@@ -477,18 +477,6 @@ void setup() {
         Serial.println("Device is not configured");
     }
 
-    // // Set device as a Wi-Fi Station
-    // WiFi.mode(WIFI_STA);
-    // WiFi.begin(ssid, password);
-    
-    // // Wait for connection
-    // while (WiFi.status() != WL_CONNECTED) {
-    //     delay(500);
-    //     WebSerial.print(".");
-    // }
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-
     if (!MDNS.begin(HOSTNAME)) {
         Serial.println("mDNS init failed");
     } else {
@@ -976,12 +964,12 @@ void loop() {
  
     distanceL=0;
     distanceR=0;
-    servoR.write(0);
-    servoL.write(0);
-    delay(1000);
-    servoR.write(180);
-    servoL.write(180);
-    delay(1000);
+    // servoR.write(0);
+    // servoL.write(0);
+    // delay(1000);
+    // servoR.write(180);
+    // servoL.write(180);
+    // delay(1000);
 
     // while(myData.sima_start!=0){
     // if(missionL==1&&missionR==1){
