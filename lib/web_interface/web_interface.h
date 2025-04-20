@@ -4,8 +4,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include <esp_wifi.h> 
-#include <Wire.h>
+#include <esp_wifi.h>
 
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -16,7 +15,7 @@
 
 #include "config.h"
 #include "led_control.h"
-#include "esp_now_comm.h" // 引入我們的 ESP-NOW 通訊庫
+#include "esp_now_comm.h"
 
 extern volatile bool start_reach_goal;
 extern volatile int mode;
@@ -32,15 +31,15 @@ public:
     void loop();
     
     // Getters for various components
-    AsyncWebServer* getServer() { return &server; }
-    NetWizard* getNetWizard() { return &NW; }
-    ESPDash* getDashboard() { return &dashboard; }
+    AsyncWebServer* getServer()    { return &server; }
+    NetWizard*      getNetWizard() { return &NW; }
+    ESPDash*        getDashboard() { return &dashboard; }
     
     // Tasks for FreeRTOS
-    static void webSerialTask(void *parameter);
-    static void elegantOTATask(void *parameter);
-    static void netWizardTask(void *parameter);
-    static void dashTask(void *parameter);
+    static void webSerialTask   (void *parameter);
+    static void elegantOTATask  (void *parameter);
+    static void netWizardTask   (void *parameter);
+    static void dashTask        (void *parameter);
     
     // Create tasks
     void createTasks();
@@ -77,7 +76,7 @@ private:
     static void onOTAEnd(bool success);
     static void onWebSerialMessage(uint8_t *data, size_t len);
     
-    // ESP-NOW 數據接收回調
+    // ESP-NOW data receive callback
     static void onESPNowDataReceived(const uint8_t *mac, const uint8_t *data, int len);
     
     // Setup NetWizard callbacks

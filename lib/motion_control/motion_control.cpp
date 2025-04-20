@@ -4,8 +4,6 @@
 #include <math.h>
 #include <Arduino.h>
 
-// Removed redundant definitions of stepperTimerL, stepperTimerR, and goalCheckTimer. These are now declared as extern in sima_core.h and defined in sima_core.cpp.
-
 void goForward(float distance) {
     going = true;
     stepDelayL = 70;
@@ -63,14 +61,10 @@ void goToTheta(float x_2, float y_2) {
     float dy = y_2 - y_1;
     float thetaGoal = atan2f(dy, dx) * 180 / M_PI;
     float thetaDiff = thetaGoal - theta;
-    if (thetaDiff > 180) thetaDiff -= 360;
-    if (thetaDiff < -180) thetaDiff += 360;
-
-    if (thetaDiff > 0) {
-        turnLeft(thetaDiff);
-    } else {
-        turnRight(-thetaDiff);
-    }
+    if (thetaDiff > 180)    thetaDiff -= 360;
+    if (thetaDiff < -180)   thetaDiff += 360;
+    if (thetaDiff > 0)      turnLeft ( thetaDiff);
+    else                    turnRight(-thetaDiff);
 }
 
 void goToDistance(float x_2, float y_2) {

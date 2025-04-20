@@ -7,9 +7,9 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 volatile int mode = 0;
 
 // Declare dynamic RGB variables globally
-int dynamicR = 255;
-int dynamicG = 255;
-int dynamicB = 255;
+int dynamicR = 127;
+int dynamicG = 127;
+int dynamicB = 127;
 
 void initLED() {
   strip.begin();
@@ -125,6 +125,24 @@ void LEDTask(void* pvParameters) {
   for (;;) {
 
     switch (mode) {
+      case UPDATING:
+        strip.setBrightness(LED_BRIGHTNESS);
+        breathingEffectNonBlocking(strip.Color(0, 0, 255), 5);
+        break;
+      case LOW_BATTERY:
+        strip.setBrightness(LED_BRIGHTNESS);
+        breathingEffectNonBlocking(strip.Color(255, 0, 0), 5);
+        break;
+      case WIFI_WIZARD:
+        // Breathing green for WiFi setup mode
+        strip.setBrightness(LED_BRIGHTNESS);
+        breathingEffectNonBlocking(strip.Color(0, 255, 0), 5);
+        break;
+      case WIFI_DISCONNECTED:
+        // Orange color wipe for disconnected WiFi
+        strip.setBrightness(LED_BRIGHTNESS);
+        breathingEffectNonBlocking(strip.Color(255, 165, 0), 100);
+        break;
       case BREATHING:
         breathingEffectNonBlocking(strip.Color(dynamicR, dynamicG, dynamicB), 5);
         break;

@@ -1,24 +1,24 @@
 #include "esp_now_comm.h"
 
-// 創建全局實例
+// Create global instance
 ESPNowComm espNow;
 
-// 初始化靜態成員變量
+// Initialize static member variable
 ESPNowComm::recv_cb_t ESPNowComm::user_recv_cb = NULL;
 
 ESPNowComm::ESPNowComm() {
-    // 初始化 lastMessage 結構體
+    // Initialize lastMessage structure
     memset(&lastMessage, 0, sizeof(struct_message));
 }
 
 bool ESPNowComm::begin() {
-    // 初始化 ESP-NOW
+    // Initialize ESP-NOW
     if (esp_now_init() != ESP_OK) {
         Serial.println("Error initializing ESP-NOW");
         return false;
     }
     
-    // 註冊接收回調
+    // Register receive callback
     esp_now_register_recv_cb(handleRecvData);
     
     Serial.println("ESP-NOW initialized successfully");
@@ -30,14 +30,14 @@ void ESPNowComm::setRecvCallback(recv_cb_t callback) {
 }
 
 bool ESPNowComm::send(const uint8_t *peer_addr, const uint8_t *data, size_t len) {
-    // 添加對等設備（如果尚未添加）
+    // Add peer device (if not already added)
     esp_now_peer_info_t peerInfo = {};
     memcpy(peerInfo.peer_addr, peer_addr, 6);
     if (esp_now_is_peer_exist(peer_addr) == false) {
         esp_now_add_peer(&peerInfo);
     }
     
-    // 發送數據
+    // Send data
     esp_err_t result = esp_now_send(peer_addr, data, len);
     return (result == ESP_OK);
 }
@@ -46,17 +46,17 @@ bool ESPNowComm::sendMessage(const uint8_t *peer_addr, const struct_message &msg
     return send(peer_addr, (uint8_t*)&msg, sizeof(struct_message));
 }
 
-// 接收回調處理函數
+// Receive callback handler function
 void ESPNowComm::handleRecvData(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
-    // 獲取源地址
+    // Get source address
     const uint8_t* mac_addr = recv_info->src_addr;
     
-    // 如果數據長度與結構體大小匹配，則保存到 lastMessage
+    // If data length matches structure size, save to lastMessage
     if (len == sizeof(struct_message)) {
         memcpy(&espNow.lastMessage, data, sizeof(struct_message));
     }
     
-    // 如果用戶設置了回調函數，則調用它
+    // If user has set a callback function, call it
     if (user_recv_cb != NULL) {
         user_recv_cb(mac_addr, data, len);
     }

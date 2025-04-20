@@ -11,17 +11,17 @@ unsigned long WebInterface::ota_progress_millis = 0;
 
 WebInterface::WebInterface() : 
     server(80),
-    NW(&server),
-    dashboard(&server, "/dashboard", true),
-    temperature(&dashboard, TEMPERATURE_CARD, "Temperature", "°C"),
-    humidity(&dashboard, HUMIDITY_CARD, "Humidity", "%"),
-    status(&dashboard, STATUS_CARD, "Test Status", DASH_STATUS_SUCCESS),
-    button(&dashboard, BUTTON_CARD, "Test Button"),
-    slider(&dashboard, SLIDER_CARD, "Test Slider", "", 0, 255, 1),
-    dashTaskHandle(NULL),
-    webSerialTaskHandle(NULL),
+    NW          (&server),
+    dashboard   (&server, "/dashboard", true),
+    temperature (&dashboard, TEMPERATURE_CARD, "Temperature", "°C"),
+    humidity    (&dashboard, HUMIDITY_CARD,    "Humidity", "%"),
+    status      (&dashboard, STATUS_CARD,      "Test Status", DASH_STATUS_SUCCESS),
+    button      (&dashboard, BUTTON_CARD,      "Test Button"),
+    slider      (&dashboard, SLIDER_CARD,      "Test Slider", "", 0, 255, 1),
+    dashTaskHandle      (NULL),
+    webSerialTaskHandle (NULL),
     elegantOTATaskHandle(NULL),
-    netWizardTaskHandle(NULL)
+    netWizardTaskHandle (NULL)
 {
     // Constructor
 }
@@ -82,22 +82,22 @@ void WebInterface::begin(const char* hostname) {
     // Start the server
     server.begin();
     
-    // 初始化 ESP-NOW 通訊庫
+    // Initialize ESP-NOW communication library
     if (!espNow.begin()) {
         sendWebSerial("Error initializing ESP-NOW");
         return;
     }
     
-    // 設置 ESP-NOW 接收回調
+    // Set ESP-NOW receive callback
     espNow.setRecvCallback(onESPNowDataReceived);
     
     // Create all the required tasks
     createTasks();
 }
 
-// ESP-NOW 數據接收回調處理
+// ESP-NOW data receive callback handler
 void WebInterface::onESPNowDataReceived(const uint8_t *mac, const uint8_t *data, int len) {
-    // 數據已經在 espNow.lastMessage 中，所以可以直接使用
+    // Data is already in espNow.lastMessage, so it can be used directly
     WebSerial.print(myDataPtr->sima_start);
 }
 
@@ -156,18 +156,22 @@ void WebInterface::setupNetWizardCallbacks() {
         switch (status) {
         case NetWizardConnectionStatus::DISCONNECTED:
             status_str = "Disconnected";
+            mode = WIFI_DISCONNECTED;
             break;
         case NetWizardConnectionStatus::CONNECTING:
             status_str = "Connecting";
             break;
         case NetWizardConnectionStatus::CONNECTED:
             status_str = "Connected";
+            mode = DEFAULT_MODE;
             break;
         case NetWizardConnectionStatus::CONNECTION_FAILED:
             status_str = "Connection Failed";
+            mode = WIFI_DISCONNECTED;
             break;
         case NetWizardConnectionStatus::CONNECTION_LOST:
             status_str = "Connection Lost";
+            mode = WIFI_DISCONNECTED;
             break;
         case NetWizardConnectionStatus::NOT_FOUND:
             status_str = "Not Found";
@@ -200,9 +204,13 @@ void WebInterface::setupNetWizardCallbacks() {
             break;
         case NetWizardPortalState::WAITING_FOR_CONNECTION:
             state_str = "Waiting for Connection";
+            // If waiting for connection in AP mode, set LED to WIFI_WIZARD mode
+            mode = WIFI_WIZARD;
             break;
         case NetWizardPortalState::SUCCESS:
             state_str = "Success";
+            // On successful configuration, reset to default LED mode
+            mode = DEFAULT_MODE;
             break;
         case NetWizardPortalState::FAILED:
             state_str = "Failed";
@@ -261,6 +269,8 @@ void WebInterface::dashTask(void *parameter) {
 void WebInterface::onOTAStart() {
     // Log when OTA has started
     WebSerial.println("OTA update started!");
+    // Set LED mode to UPDATING
+    mode = UPDATING;
 }
 
 void WebInterface::onOTAProgress(size_t current, size_t final) {
@@ -281,10 +291,10 @@ void WebInterface::onOTAEnd(bool success) {
 }
 
 void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
-    WebSerial.printf("Received %lu bytes from WebSerial: ", len);
+    // WebSerial.printf("Received %lu bytes from WebSerial: ", len);
     Serial.write(data, len);
-    WebSerial.println();
-    WebSerial.println("Received Data...");
+    // WebSerial.println();
+    // WebSerial.println("Received Data...");
     
     String d = "";
     for(size_t i = 0; i < len; i++){
@@ -295,7 +305,7 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
     // Check commands
     if (d == "GO") {
         start_reach_goal = true;
-        WebSerial.println("Starting reach_goal loop...");
+        WebSerial.println("SIMA GO command received. Starting SIMA...");
     } else if (d == "RESTORE") {
         WebSerial.println("Factory reset command received. Erasing NW configuration...");
         webInterface.getNetWizard()->erase();
@@ -305,27 +315,6 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
     } else if (d == "RESET") {
         WebSerial.println("Reset command received. Restarting ESP...");
         ESP.restart();
-    } else if (d.startsWith("RGB")) {
-        int r, g, b;
-        if (sscanf(d.c_str(), "RGB %d %d %d", &r, &g, &b) == 3) {
-            WebSerial.printf("Setting RGB to R=%d, G=%d, B=%d\n", r, g, b);
-            uint32_t color = strip.Color(r, g, b);
-            for (int i = 0; i < strip.numPixels(); i++) {
-                strip.setPixelColor(i, color);
-            }
-            strip.show();
-        } else {
-            WebSerial.println("Invalid RGB format. Use: RGB <R> <G> <B>");
-        }
-    } else if (d.startsWith("BRIGHTNESS")) {
-        int brightness;
-        if (sscanf(d.c_str(), "BRIGHTNESS %d", &brightness) == 1) {
-            WebSerial.printf("Setting brightness to %d\n", brightness);
-            strip.setBrightness(brightness);
-            strip.show();
-        } else {
-            WebSerial.println("Invalid BRIGHTNESS format. Use: BRIGHTNESS <value>");
-        }
     } else if (d.startsWith("MODE")) {
         int modeValue;
         if (sscanf(d.c_str(), "MODE %d", &modeValue) == 1) {
@@ -335,7 +324,7 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
             WebSerial.println("Invalid MODE format. Use: MODE <value>");
         }
     } else {
-        WebSerial.println("Unknown command. Use: RGB, BRIGHTNESS, or MODE");
+        WebSerial.println("Unknown command. ");
     }
 }
 

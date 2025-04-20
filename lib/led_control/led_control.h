@@ -5,9 +5,14 @@
 
 enum led_mode {
   DEFAULT_MODE,
+  STATIC_COLOR,
   COLOR_WIPE,
   BREATHING,
   RAINBOW,
+  LOW_BATTERY,
+  UPDATING,
+  WIFI_WIZARD,
+  WIFI_DISCONNECTED,
 };
 
 extern Adafruit_NeoPixel strip;
