@@ -65,15 +65,14 @@ NetWizard NW(&server);
 #define servoPinR 19 //R:servo 1 
 #define servoPinL 20 //L:servo 2  
 
-#define wheelCircum  148.188923//47.17*3.1415926 mm
-#define lengthPerDegree 0.411636//148.188923/360 mm
-#define lengthPerStep 0.0115772596//148.188923/12800 mm
-#define wheelDistance 83.7155// mm (by tiral)
-#define carCircum 263//(by tiral)
+#define wheelCircum  47.17*PI//mm
+#define lengthPerStep wheelCircum/12800//mm
+#define wheelDistance 85.53// mm (by tiral)
+#define carCircum wheelDistance*PI//(by tiral)
 #define STEPS_PER_REV 12800  // 200 步 * 32 微步 = 6400 microsteps, 6400*2
-#define rotateAnglePerStep 0.01585
+#define rotateAnglePerStep  0.0155
 
-esp_timer_handle_t stepperTimerL, stepperTimerR, VL53Timer;
+esp_timer_handle_t stepperTimerL, stepperTimerR, goalCheckTimer;
 
 float stepDelayL = 70, stepDelayR = 70; 
 bool accelerationL = false, accelerationR = false, decelerationL = false, decelerationR = false;
@@ -82,7 +81,7 @@ bool avoiding = false;
 float x_1=0, y_1=0, theta=0, x_goal=0, y_goal=0;//sima 1 ; start (150,1800) ; stop(1000,1400)
 float distanceL=0, distanceR=0, range=40;
 float missionL=1, missionR=1, avoidStageL=0, avoidStageR=0, escape=0, adjust=0;
-int step=0,test=1;
+int step=0, preStep=0, test=1;
 
 VL53L0X_Sensors sensors;
 Servo servoL;
@@ -131,7 +130,7 @@ void onOTAStart() {
   }
 
 void IRAM_ATTR stepperCallbackL(void *arg){
-    
+    if (reach_goal) return;
     digitalWrite(STEP_PIN_L, !digitalRead(STEP_PIN_L));
     distanceL-=lengthPerStep;
     if(going){
@@ -154,12 +153,17 @@ void IRAM_ATTR stepperCallbackL(void *arg){
             accelerationL=false;
         }    
     }
-    if(distanceL<=110||decelerationL){
+    if(distanceL<=110){
         if(!rotatingL||!rotatingR){
         if(stepDelayL<70){
-            stepDelayL+=0.005;
+            stepDelayL+=0.004;
         }
             
+        }
+    }
+    if(decelerationL){
+        if(stepDelayL<70){
+            stepDelayL+=0.01;
         }
     }
     if(distanceL>=0){
@@ -185,7 +189,7 @@ void IRAM_ATTR stepperCallbackL(void *arg){
     }
 }
 void IRAM_ATTR stepperCallbackR(void *arg){
-    
+    if (reach_goal) return;
     digitalWrite(STEP_PIN_R, !digitalRead(STEP_PIN_R));
     distanceR -= lengthPerStep;
 
@@ -199,9 +203,14 @@ void IRAM_ATTR stepperCallbackR(void *arg){
     if(distanceR <= 110||decelerationR){
         if(!rotatingL||!rotatingR){
             if(stepDelayR<65){
-                stepDelayR+=0.005;
+                stepDelayR+=0.004;
             }
     }
+    }
+    if(decelerationR){
+        if(stepDelayR<70){
+            stepDelayR+=0.01;
+        }
     }
     if(distanceR >= 0){
         esp_timer_start_once(stepperTimerR, stepDelayR);
@@ -216,11 +225,45 @@ void IRAM_ATTR stepperCallbackR(void *arg){
         }
     }
 }
+void IRAM_ATTR checkGoalCallback(void* arg) {
+    if (!reach_goal) {
+        if (y_1 < 1500) {
+            if (x_1 * 2 + y_1 >= 5000 && -x_1 * 0.545 + y_1 >= 354.55) {
+                reach_goal = true;
+                distanceL = 0;
+                distanceR = 0;
+            }
+        }
+    }
+    
+}
 
+void switchcase (){
+
+    if (step != 0 ) {
+        preStep = step;
+        x_1 += preStep * lengthPerStep * cos(theta * DEG_TO_RAD);
+        y_1 += preStep * lengthPerStep * sin(theta * DEG_TO_RAD);
+        step -= preStep;
+    }
+    going=false;
+    goingBack=false;
+    rotatingL=false;
+    rotatingR=false;
+}
+void stop(){
+
+    distanceL=0;
+    distanceR=0;
+    decelerationL=0;
+    decelerationR=0;
+}
 
 
 void goFoward(float distance){
 
+    switchcase();
+    going = true;
     stepDelayL = 70; 
     stepDelayR = 70; 
     digitalWrite(DIR_PIN_L, LOW);
@@ -231,11 +274,13 @@ void goFoward(float distance){
     esp_timer_start_once(stepperTimerR, stepDelayR);
     accelerationL=true;
     accelerationR=true;
-    going = true; 
+ 
 
 }
 void goBackward(float distance){
 
+    switchcase();    
+    goingBack = true;
     stepDelayL = 70; 
     stepDelayR = 70; 
     digitalWrite(DIR_PIN_L, HIGH);
@@ -246,35 +291,33 @@ void goBackward(float distance){
     esp_timer_start_once(stepperTimerR, stepDelayR);
     accelerationL=true;
     accelerationR=true;
-    goingBack = true; 
-
 }
 void turnLeft(float degree){
 
-    stepDelayL = 70; 
-    stepDelayR = 70; 
+    switchcase();
+    rotatingL=true;
+    stepDelayL = 60; 
+    stepDelayR = 60; 
     digitalWrite(DIR_PIN_L, HIGH);
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum*degree/360;
     distanceR = carCircum*degree/360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
     esp_timer_start_once(stepperTimerR, stepDelayR);
-    rotatingL=true;
-
 }
 
 void turnRight(float degree){
 
-    stepDelayL = 50; 
-    stepDelayR = 50; 
+    switchcase();
+    rotatingR=true;
+    stepDelayL = 60; 
+    stepDelayR = 60; 
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, LOW);
     distanceL = carCircum*degree/360;
     distanceR = carCircum*degree/360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
     esp_timer_start_once(stepperTimerR, stepDelayR);
-    rotatingR=true;
-
 }
 void goToTheta(float x_2, float y_2) {
 
@@ -282,8 +325,6 @@ void goToTheta(float x_2, float y_2) {
     float dy = y_2 - y_1;
 
     float thetaGoal = atan2f(dy, dx) * 180 / M_PI;
-    WebSerial.print(thetaGoal);
-    WebSerial.print("  ");
     float thetaDiff = thetaGoal - theta;
     if (thetaDiff > 180) thetaDiff -= 360;
     if (thetaDiff < -180) thetaDiff += 360;
@@ -293,8 +334,6 @@ void goToTheta(float x_2, float y_2) {
     } else {
         turnRight(-thetaDiff);  
     }
-    
-
 }
 void goToDistance(float x_2, float y_2){
 
@@ -302,7 +341,6 @@ void goToDistance(float x_2, float y_2){
     float dy = y_2 - y_1;    
     float distance=sqrt(pow(dx,2)+pow(dy,2));
     goFoward(distance);
-   
 
 }
 
@@ -353,6 +391,14 @@ void netWizardTask(void *parameter) {
 
 void setup() {
 
+    stepDelayL = 70, stepDelayR = 70; 
+    accelerationL = false, accelerationR = false, decelerationL = false, decelerationR = false;
+    rotatingL = false, rotatingR = false, going = false, goingBack = false, reach_goal=false;
+    avoiding = false;
+    x_1=0, y_1=0, theta=0, x_goal=0, y_goal=0;//sima 1 ; start (150,1800) ; stop(1000,1400)
+    distanceL=0, distanceR=0, range=40;
+    missionL=1, missionR=1, avoidStageL=0, avoidStageR=0, escape=0, adjust=0;
+    step=0, preStep=0, test=1;
 
     Serial.begin(115200);
 
@@ -379,6 +425,12 @@ void setup() {
     timerArgsR.callback = &stepperCallbackR;
     timerArgsR.name = "StepperTimerR";
     esp_timer_create(&timerArgsR, &stepperTimerR);
+
+    esp_timer_create_args_t checkGoalArgs = {};
+    checkGoalArgs.callback = &checkGoalCallback;
+    checkGoalArgs.name = "GoalCheck";
+    esp_timer_create(&checkGoalArgs, &goalCheckTimer);
+    esp_timer_start_periodic(goalCheckTimer, 200 * 1000);
 
     // ----------------------------
     // Configure NetWizard Strategy
@@ -601,6 +653,7 @@ void setup() {
     // get recv packer info
     esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
 
+
     
 
     //設定 1/32 微步模式 (MS1 = HIGH, MS2 = LOW)
@@ -611,6 +664,9 @@ void setup() {
     accelerationR=true;
 
     sensors.begin();
+
+    servoR.write(0);
+    servoL.write(0);
     
     //checking I2C setting
     WebSerial.println("\nI2C Scanner Starting...");
@@ -624,11 +680,7 @@ void setup() {
     }
     WebSerial.println("Scan Done.");
 
-    //start point
-    x_1=150 ;
-    y_1=1600 ;
-    x_goal=1900;
-    y_goal=1400;
+
 
     // Create a task to run ElegantOTA and WebSerial on the second core
     xTaskCreatePinnedToCore(
@@ -636,7 +688,7 @@ void setup() {
         "DashTask",   // Name of the task
         10000,               // Stack size (in bytes)
         NULL,               // Task input parameter
-        1,                  // Priority of the task
+        0,                  // Priority of the task
         &dashTaskHandle, // Task handle
         1                   // Core to run the task on (0 for core 0, 1 for core 1)
     );
@@ -647,7 +699,7 @@ void setup() {
         "WebSerialTask",   // Name of the task
         4096,               // Stack size (in bytes)
         NULL,               // Task input parameter
-        1,                  // Priority of the task
+        0,                  // Priority of the task
         &webSerialTaskHandle, // Task handle
         1                   // Core to run the task on (0 for core 0, 1 for core 1)
     );
@@ -657,7 +709,7 @@ void setup() {
         "ElegantOTATask",   // Name of the task
         4096,               // Stack size (in bytes)
         NULL,               // Task input parameter
-        1,                  // Priority of the task
+        0,                  // Priority of the task
         &elegantOTATaskHandle, // Task handle
         1                   // Core to run the task on (0 for core 0, 1 for core 1)
     );
@@ -667,7 +719,7 @@ void setup() {
         "NetWizardTask",   // Name of the task
         4096,               // Stack size (in bytes)
         NULL,               // Task input parameter
-        1,                  // Priority of the task
+        0,                  // Priority of the task
         &netWizardTaskHandle, // Task handle
         1                   // Core to run the task on (0 for core 0, 1 for core 1)
     );
@@ -681,7 +733,7 @@ void setup() {
         "LEDTask",   // Name of the task
         4096,               // Stack size (in bytes)
         NULL,               // Task input parameter
-        1,                  // Priority of the task
+        0,                  // Priority of the task
         NULL,               // Task handle
         1                   // Core to run the task on (0 for core 0, 1 for core 1)
     );
@@ -692,10 +744,16 @@ void setup() {
         "LEDUpdateTask",   // Name of the task
         4096,               // Stack size (in bytes)
         NULL,               // Task input parameter
-        1,                  // Priority of the task
+        0,                  // Priority of the task
         &ledUpdateTaskHandle, // Task handle
         1                   // Core to run the task on (0 for core 0, 1 for core 1)
-    );
+    );    
+    
+    //start point
+    x_1=100 ;
+    y_1=1600 ;
+    x_goal=1900;
+    y_goal=1400;
 
 }
 
@@ -705,126 +763,22 @@ void loop() {
     //WebSerial.println(myData.sima_start);
 
     if (start_reach_goal) {
-        while (!reach_goal) {
-            if(missionL==1&&missionR==1){
-                goToTheta(x_goal,y_goal);
-                goToDistance(x_goal,y_goal);
-            }
-            else if(missionL==2&&missionR==2){
-                goToTheta(x_1,y_1);
-                goToDistance(x_1,y_1);
-            }
-            sensors.readSensors();
 
-            //WebSerial.println(myData.sima_start);
-            // WebSerial.print("L=");
-            // WebSerial.print(VL53L);
-            // WebSerial.print("  M=");
-            // WebSerial.print(VL53M);
-            // WebSerial.print("  R=");
-            // WebSerial.print(VL53R);
+        if (!reach_goal) {
+
+            sensors.readSensors();
         
-            if(step>3000){
-                x_1+=3000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=3000*lengthPerStep*sin(theta * 0.01745329);
-                step-=3000;
-            }
-            else if(step>2000){
-                x_1+=2000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=2000*lengthPerStep*sin(theta * 0.01745329);
-                step-=2000;
-            }
-            else if(step>1000){
-                x_1+=1000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=1000*lengthPerStep*sin(theta * 0.01745329);
-                step-=1000;
-            }
-            else if(step>400){
-                x_1+=400*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=400*lengthPerStep*sin(theta * 0.01745329);
-                step-=400;
-            }  
-            else if(step>100){
-                x_1+=100*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=100*lengthPerStep*sin(theta * 0.01745329);
-                step-=100;
-            }    
-            else if(step>20){
-                x_1+=20*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=20*lengthPerStep*sin(theta * 0.01745329);
-                step-=20;
-            }
-            else if(step>5){
-                x_1+=5*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=5*lengthPerStep*sin(theta * 0.01745329);
-                step-=5;
-            }
-            else if(step>0){
-                x_1+=lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1+=lengthPerStep*sin(theta * 0.01745329);
-                step-=1;
-            }
-            if(step<-3000){
-                x_1-=3000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=3000*lengthPerStep*sin(theta * 0.01745329);
-                step+=3000;
-            }
-            else if(step<-2000){
-                x_1-=2000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=2000*lengthPerStep*sin(theta * 0.01745329);
-                step+=2000;
-            }
-            else if(step<-1000){
-                x_1-=1000*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=1000*lengthPerStep*sin(theta * 0.01745329);
-                step+=1000;
-            }
-            else if(step<-400){
-                x_1-=400*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=400*lengthPerStep*sin(theta * 0.01745329);
-                step+=400;
-            }  
-            else if(step<-100){
-                x_1-=100*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=100*lengthPerStep*sin(theta * 0.01745329);
-                step+=100;
-            }    
-            else if(step<-20){
-                x_1-=20*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=20*lengthPerStep*sin(theta * 0.01745329);
-                step+=20;
-            }
-            else if(step<-5){
-                x_1-=5*lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=5*lengthPerStep*sin(theta * 0.01745329);
-                step+=5;
-            }
-            else if(step>0){
-                x_1-=lengthPerStep*cos(theta * 0.01745329);//pi/180
-                y_1-=lengthPerStep*sin(theta * 0.01745329);
-                step+=1;
+            if(step!=0){
+                preStep=step;
+                x_1+=preStep*lengthPerStep*cos(theta * DEG_TO_RAD);//pi/180
+                y_1+=preStep*lengthPerStep*sin(theta * DEG_TO_RAD);
+                step-=preStep;
             }
             if(theta>360){
-                theta-=360;
+              theta = fmod(theta, 360.0);  
             }
-            if(theta<-360){
-                theta+=360;
-            }
-
-            // WebSerial.print(distanceL);
-            // WebSerial.print(" avoid= ");
-            // WebSerial.print(avoidStageL);
-            // WebSerial.print(" escape= ");
-            // WebSerial.print(escape);
-            // WebSerial.print(" adjust= ");
-            // WebSerial.print(adjust);
-            // WebSerial.print(" theta= ");
-            // WebSerial.print(theta);
-            // WebSerial.print("  x= ");
-            // WebSerial.print(x_1);
-            // WebSerial.print("  y= ");
-            // WebSerial.println(y_1);
-
+            if (theta < 0) theta += 360;
+    
             if(missionL==1&&missionR==1){
                 goToTheta(x_goal, y_goal);
                 missionL=1.5;
@@ -835,26 +789,29 @@ void loop() {
                 missionL=2.5;
                 missionR=2.5;
             }
-            if(VL53M<250||VL53R<100){
+
+            if(VL53M<250||VL53R<150){
                 decelerationL=1;
                 decelerationR=1;
             }
-            else if(VL53L<100){
+            else if(VL53L<150){
                 decelerationL=1;
                 decelerationR=1;
             }
             else{
                 decelerationL=0;
                 decelerationR=0;
+                if(stepDelayL>60){
+                    accelerationL=1; 
+                }
+                if(stepDelayR>60){
+                    accelerationR=1; 
+                }
             }
+
             if(avoidStageL!=1){
                 if(VL53M<150){
-                    distanceL=0;
-                    distanceR=0;
-                    going=false;
-                    goingBack=false;
-                    decelerationL=0;
-                    decelerationR=0;
+                    stop();
                     avoidStageL=1;
                     avoidStageR=1;
                     if(VL53R<100){
@@ -862,23 +819,13 @@ void loop() {
                     }
                 }
                 if(VL53R<70){
-                    distanceL=0;
-                    distanceR=0;
-                    going=false;
-                    goingBack=false;
-                    decelerationL=0;
-                    decelerationR=0;
+                    stop();
                     avoidStageL=1;
                     avoidStageR=1;
                     adjust=3;
                 }
                 if(VL53L<70){
-                    distanceL=0;
-                    distanceR=0;
-                    going=false;
-                    goingBack=false;
-                    decelerationL=0;
-                    decelerationR=0;
+                    stop();
                     avoidStageL=1;
                     avoidStageR=1;
                     adjust=1;
@@ -887,17 +834,8 @@ void loop() {
             if(avoidStageL==1&&avoidStageR==1){
                 
                 if(escape==0&&adjust==0){
-                    turnRight(360);        
-
-                    if(VL53M>250){
-                        distanceL=0;
-                        distanceR=0;
-                        rotatingL=false;
-                        rotatingR=false;
-                        avoidStageL=1.5;
-                        avoidStageR=1.5;                                                                                                                                                                                                                                                                        
-
-                    }
+                    turnRight(45);
+                    adjust=1.5;
                 }
                 else if(escape==1){
                     goBackward(200);
@@ -908,11 +846,7 @@ void loop() {
                     escape=2.5;
                 }
                 else if(escape==3){
-                    distanceL=0;
-                    distanceR=0;
                     escape=0;
-                    rotatingL=false;
-                    rotatingR=false;
                     avoidStageL=2;
                     avoidStageR=2; 
                 }
@@ -952,33 +886,11 @@ void loop() {
                     avoidStageR=0;
                     
             }
-
-
-            if(y_1<1500){
-                if(x_1*2+y_1>=5000&&-x_1*0.545+y_1>=354.55){
-                    reach_goal=1;
-                }
-            }
-        }    
-    }
+         }    
+     }
  
-    distanceL=0;
-    distanceR=0;
-    // servoR.write(0);
-    // servoL.write(0);
-    // delay(1000);
-    // servoR.write(180);
-    // servoL.write(180);
-    // delay(1000);
+    
 
-    // while(myData.sima_start!=0){
-    // if(missionL==1&&missionR==1){
 
-    //         goFoward(1700);
-    //         missionL=1.5;
-    //         missionR=1.5;
-            
-    //     }
-    // }
 
 }
