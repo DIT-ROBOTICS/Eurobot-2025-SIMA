@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <WebSerial.h>
 #include "motion_control.h"
+#include "esp_now_comm.h" // 引入 ESP-NOW 通訊庫
 
 #include <ESP32Servo.h>
 
@@ -80,6 +81,16 @@ void initSimaCore() {
 
     accelerationL=true;
     accelerationR=true;
+
+    // 掃描 I2C 總線並檢測連接的設備
+    Serial.println("\nI2C Scanner Starting...");
+    for (uint8_t address = 1; address < 127; address++) {
+        Wire.beginTransmission(address);
+        if (Wire.endTransmission() == 0) {
+            Serial.printf("I2C Device Found at 0x%02X\n", address);
+        }
+    }
+    Serial.println("I2C Scan Done.");
 
     sensors.begin();
 
@@ -224,7 +235,7 @@ void sima_core(void *parameter) {
 
     // Add WebSerial logs to debug start_reach_goal
     // WebSerial.print(start_reach_goal);
-    if (start_reach_goal) {
+    if (start_reach_goal || espNow.lastMessage.sima_start) { // 添加對 espNow.lastMessage.sima_start 的檢查
         // WebSerial.println("SIMA core: start_reach_goal is true. Entering loop...");
 
         if (!reach_goal) {
