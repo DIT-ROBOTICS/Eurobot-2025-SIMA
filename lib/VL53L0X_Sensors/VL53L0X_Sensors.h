@@ -3,6 +3,7 @@
 
 #include <Wire.h>
 #include <VL53L0X.h>
+#include "config.h"
 
 extern float VL53L, VL53M, VL53R;
 
@@ -10,18 +11,18 @@ class VL53L0X_Sensors {
 public:
     VL53L0X sensor1, sensor2, sensor3;
     
-    // XSHUT GPIO 腳位
-    const int XSHUT1 = 10;
-    const int XSHUT2 = 11;
-    const int XSHUT3 = 12;
+    // XSHUT GPIO pins
+    const int XSHUT1 = XSHUT1_PIN;
+    const int XSHUT2 = XSHUT2_PIN;
+    const int XSHUT3 = XSHUT3_PIN;
 
-    // I2C 腳位
-    const int SDA_PIN = 8;
-    const int SCL_PIN = 9;
+    // I2C pins
+    const int SDA_PIN = VL53L0X_SDA_PIN;
+    const int SCL_PIN = VL53L0X_SCL_PIN;
 
-    VL53L0X_Sensors();  // 建構函式
-    void begin();       // 初始化感測器
-    void readSensors(); // 讀取感測器數據
+    VL53L0X_Sensors();
+    void begin();       // Initialize sensors
+    void readSensors(); // Read sensor data
 };
 
 #endif

@@ -3,42 +3,42 @@
 float VL53L = 0.0, VL53M = 0.0, VL53R = 0.0;
 
 VL53L0X_Sensors::VL53L0X_Sensors() {
-    // 設定 XSHUT 腳位為輸出
+    // Set XSHUT pins as output
     pinMode(XSHUT1, OUTPUT);
     pinMode(XSHUT2, OUTPUT);
     pinMode(XSHUT3, OUTPUT);
 
-    // 初始化所有感測器（先關閉）
+    // Initialize all sensors (turn off first)
     digitalWrite(XSHUT1, LOW);
     digitalWrite(XSHUT2, LOW);
     digitalWrite(XSHUT3, LOW);
 }
 
 void VL53L0X_Sensors::begin() {
-    // 啟動 I2C
+    // Start I2C
     Wire.begin(SDA_PIN, SCL_PIN);
 
     delay(10);
 
-    // 啟動第一個感測器
+    // Start first sensor
     digitalWrite(XSHUT1, HIGH);
     delay(10);
     sensor1.init();
     sensor1.setAddress(0x30);
 
-    // 啟動第二個感測器
+    // Start second sensor
     digitalWrite(XSHUT2, HIGH);
     delay(10);
     sensor2.init();
     sensor2.setAddress(0x31);
 
-    // 啟動第三個感測器
+    // Start third sensor
     digitalWrite(XSHUT3, HIGH);
     delay(10);
     sensor3.init();
     sensor3.setAddress(0x32);
 
-    // 啟動連續測距模式
+    // Start continuous ranging mode
     sensor1.startContinuous();
     sensor2.startContinuous();
     sensor3.startContinuous();
