@@ -5,9 +5,10 @@
 #include <Arduino.h>
 
 void goForward(float distance) {
+    switchcase();
     going = true;
-    stepDelayL = 70;
-    stepDelayR = 70;
+    stepDelayL = maxStepDelay;
+    stepDelayR = maxStepDelay;
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = distance;
@@ -19,9 +20,10 @@ void goForward(float distance) {
 }
 
 void goBackward(float distance) {
+    switchcase();
     goingBack = true;
-    stepDelayL = 70;
-    stepDelayR = 70;
+    stepDelayL = maxStepDelay;
+    stepDelayR = maxStepDelay;
     digitalWrite(DIR_PIN_L, HIGH);
     digitalWrite(DIR_PIN_R, LOW);
     distanceL = distance;
@@ -33,6 +35,7 @@ void goBackward(float distance) {
 }
 
 void turnLeft(float degree) {
+    switchcase();
     rotatingL = true;
     stepDelayL = 60;
     stepDelayR = 60;
@@ -45,6 +48,7 @@ void turnLeft(float degree) {
 }
 
 void turnRight(float degree) {
+    switchcase();
     rotatingR = true;
     stepDelayL = 60;
     stepDelayR = 60;

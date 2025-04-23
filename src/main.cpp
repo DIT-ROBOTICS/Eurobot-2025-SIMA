@@ -44,10 +44,8 @@ void setup() {
     xTaskCreatePinnedToCore(sima_core, "SimaCoreTask", 8192, NULL, 2, NULL, 1);
 
     // Initialize the starting and goal positions
-    x_1     = 100;
-    y_1     = 1600;
-    x_goal  = 1900;
-    y_goal  = 1400;
+    setSimaGoal(3);
+
 }
 
 void loop() {}
