@@ -41,11 +41,14 @@ void setup() {
     // Initialize the web interface components
     webInterface.begin(HOSTNAME);
 
+    if( simaNum == 1 || simaNum == 2 || simaNum == 3 )
     xTaskCreatePinnedToCore(sima_core, "SimaCoreTask", 8192, NULL, 2, NULL, 1);
+    else if(simaNum == 4)
+    xTaskCreatePinnedToCore(sima_core_superstar, "SimaCoreTaskSuperstar", 8192, NULL, 2, NULL, 1);
 
     // Initialize the starting and goal positions
-    setSimaGoal(3);
-    firstSimaStep(3);
+    setSimaGoal(simaNum);
+    firstSimaStep(simaNum);
 
 }
 

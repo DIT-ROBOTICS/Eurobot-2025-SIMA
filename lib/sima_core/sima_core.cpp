@@ -123,6 +123,12 @@ void setSimaGoal(int num){
         x_goal  = 1850;
         y_goal  = 1450;
     }
+    if(num==4){
+        x_1     = 100;
+        y_1     = 1975;
+        x_goal  = 1400;
+        y_goal  = 1150;
+    }
 
 }
 void firstSimaStep(int num){
@@ -137,6 +143,10 @@ void firstSimaStep(int num){
     }
     if(num == 3){
         delay(1500);
+        firstSimaStepStage = 1;
+    }
+    if(num == 4){
+        esp_timer_stop(goalCheckTimer);
         firstSimaStepStage = 1;
     }
     
@@ -218,13 +228,13 @@ void IRAM_ATTR stepperCallbackR(void *arg) {
 void IRAM_ATTR checkGoalCallback(void* arg) {
     if (!reach_goal) {
 
-///*------------------------------------for sima 1-----------------------------------
+/*------------------------------------for sima 1-----------------------------------
         if (y_1 <= 1500 && y_1 >= 2 * x_1 - 1000 && y_1 >= (-6.0 / 11.0) * x_1 + (21900.0 / 11.0)) {
                 reach_goal = true;
                 distanceL = 0;
                 distanceR = 0;
         }
-//-----------------------------------------------------------------------------------*/        
+-----------------------------------------------------------------------------------*/        
 /*------------------------------------for sima 2-----------------------------------
         if (x_1>=1300 && x_1<=1700 && y_1>=1300&&y_1<=1500) {
                 reach_goal = true;
@@ -254,7 +264,7 @@ void stop() {
 void sima_core(void *parameter) {
     for (;;) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
-            
+                
                 sensors.readSensors();
 
                 if (step != 0) {
@@ -360,4 +370,30 @@ void sima_core(void *parameter) {
             }
         }
     }
+}
+
+void sima_core_superstar(void *parameter) {
+    for (;;) {
+        if (start_reach_goal || espNow.lastMessage.sima_start) {
+                WebSerial.println("[sima_core_superstar] received message");
+            if (!reach_goal&&firstSimaStepStage==1) {
+                WebSerial.println(mission);
+                if (mission == 1 ) {
+                    goForward(1150);
+                    mission = 1.5;
+                }         
+                else if (mission == 2 ) {
+                    turnLeft(90);
+                    mission = 2.5;
+                }
+                else if (mission == 3 ) {
+                    goBackward(300);
+                    mission = 3.5;
+                }
+                else if (mission == 4 ) {
+                    reach_goal=1;
+                }
+            }
+        }    
+    }        
 }

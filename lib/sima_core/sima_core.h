@@ -22,6 +22,7 @@ extern esp_timer_handle_t stepperTimerL, stepperTimerR, goalCheckTimer;
 extern volatile bool start_reach_goal;
 
 void sima_core(void *parameter);
+void sima_core_superstar(void *parameter);
 void initSimaCore();
 void firstSimaStep(int num);
 void switchcase();
