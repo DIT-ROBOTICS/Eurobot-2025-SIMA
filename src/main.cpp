@@ -45,6 +45,7 @@ void setup() {
 
     // Initialize the starting and goal positions
     setSimaGoal(3);
+    firstSimaStep(3);
 
 }
 

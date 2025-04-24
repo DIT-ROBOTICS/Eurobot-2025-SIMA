@@ -33,7 +33,7 @@ float x_1,    y_1,
       theta,
       range,
       distanceL,   distanceR,
-        mission,  avoidStage, 
+        mission,  avoidStage, firstSimaStepStage,
      escape, adjust;
 int step=0, preStep=0, test=1;
 
@@ -104,13 +104,42 @@ void initSimaCore() {
 }
 
 void setSimaGoal(int num){
-
-    if(num==3){
+    
+    if(num==1){
         x_1     = 100;
-        y_1     = 1850;
-        x_goal  = 1850;
+        y_1     = 1710;
+        x_goal  = 1050;
+        y_goal  = 1450;
+    }
+    if(num==2){
+        x_1     = 100;
+        y_1     = 1600;
+        x_goal  = 1500;
         y_goal  = 1400;
     }
+    if(num==3){
+        x_1     = 100;
+        y_1     = 1825;
+        x_goal  = 1850;
+        y_goal  = 1450;
+    }
+
+}
+void firstSimaStep(int num){
+
+    if(num == 1){
+        goForward(200);
+        firstSimaStepStage = 0.5;
+    }
+    if(num == 2 ){
+        goForward(400);
+        firstSimaStepStage = 0.5;
+    }
+    if(num == 3){
+        delay(1500);
+        firstSimaStepStage = 1;
+    }
+    
 
 }
 
@@ -155,7 +184,8 @@ void IRAM_ATTR stepperCallbackL(void *arg) {
         esp_timer_start_once(stepperTimerL, stepDelayL);
     } else if (distanceL <= 0) {
         
-        if (avoidStage==0)  mission += 0.5;
+        if (avoidStage==0&&firstSimaStepStage==1)  mission += 0.5;
+        if (firstSimaStepStage == 0.5) firstSimaStepStage += 0.5 ;
         if (avoidStage > 0 && escape == 0 && adjust == 0) avoidStage += 0.5; 
         if (escape == 1.5 || escape == 2.5 )                  escape += 0.5;
         if (adjust == 1.5)                                    adjust += 0.5;        
@@ -187,13 +217,28 @@ void IRAM_ATTR stepperCallbackR(void *arg) {
 
 void IRAM_ATTR checkGoalCallback(void* arg) {
     if (!reach_goal) {
-        if (y_1 < 1500) {
-            if (x_1 * 2 + y_1 >= 5000 && -x_1 * 0.545 + y_1 >= 354.55) {
+
+///*------------------------------------for sima 1-----------------------------------
+        if (y_1 <= 1500 && y_1 >= 2 * x_1 - 1000 && y_1 >= (-6.0 / 11.0) * x_1 + (21900.0 / 11.0)) {
                 reach_goal = true;
                 distanceL = 0;
                 distanceR = 0;
-            }
         }
+//-----------------------------------------------------------------------------------*/        
+/*------------------------------------for sima 2-----------------------------------
+        if (x_1>=1300 && x_1<=1700 && y_1>=1300&&y_1<=1500) {
+                reach_goal = true;
+                distanceL = 0;
+                distanceR = 0;
+        }
+-----------------------------------------------------------------------------------*/ 
+/*------------------------------------for sima 3-----------------------------------
+        if (y_1 <= 1500 && x_1 * 2 + y_1 >= 5000 && -x_1 * 0.545 + y_1 >= 354.55) {
+                reach_goal = true;
+                distanceL = 0;
+                distanceR = 0;
+        }
+//-----------------------------------------------------------------------------------*/
     }
 }
 
@@ -209,7 +254,7 @@ void stop() {
 void sima_core(void *parameter) {
     for (;;) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
-            if (!reach_goal) {
+            
                 sensors.readSensors();
 
                 if (step != 0) {
@@ -225,7 +270,7 @@ void sima_core(void *parameter) {
 
                 //WebSerial.printf("[SIMA-CORE] Current theta=%.2f\n", theta);
                 //WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f\n", x_1, y_1);
-        
+            if (!reach_goal&&firstSimaStepStage==1) {
                 if (mission == 1 ) {
                     WebSerial.println("[SIMA-CORE] Executing goToTheta.");
                     goToTheta(x_goal, y_goal);
