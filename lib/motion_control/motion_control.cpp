@@ -37,8 +37,8 @@ void goBackward(float distance) {
 void turnLeft(float degree) {
     switchcase();
     rotatingL = true;
-    stepDelayL = 60;
-    stepDelayR = 60;
+    stepDelayL = 65;
+    stepDelayR = 65;
     digitalWrite(DIR_PIN_L, HIGH);
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum * degree / 360;
@@ -50,8 +50,8 @@ void turnLeft(float degree) {
 void turnRight(float degree) {
     switchcase();
     rotatingR = true;
-    stepDelayL = 60;
-    stepDelayR = 60;
+    stepDelayL = 65;
+    stepDelayR = 65;
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, LOW);
     distanceL = carCircum * degree / 360;

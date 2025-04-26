@@ -109,13 +109,13 @@ void setSimaGoal(int num){
         x_1     = 100;
         y_1     = 1710;
         x_goal  = 1050;
-        y_goal  = 1450;
+        y_goal  = 1500;
     }
     if(num==2){
         x_1     = 100;
         y_1     = 1600;
         x_goal  = 1500;
-        y_goal  = 1400;
+        y_goal  = 1350;
     }
     if(num==3){
         x_1     = 100;
@@ -129,28 +129,36 @@ void setSimaGoal(int num){
         x_goal  = 1400;
         y_goal  = 1150;
     }
-
+}
+void stop() {
+    distanceL = 0;
+    distanceR = 0;
+    accelerationL = 0;
+    accelerationR = 0;
+    decelerationL = 0;
+    decelerationR = 0;
 }
 void firstSimaStep(int num){
 
     if(num == 1){
-        goForward(200);
+        firstSimaStepStage = -2;
+        vTaskDelay(pdMS_TO_TICKS(500));
+        goForward(120);
         firstSimaStepStage = 0.5;
     }
     if(num == 2 ){
-        goForward(400);
+        goForward(550);
         firstSimaStepStage = 0.5;
     }
     if(num == 3){
-        delay(1500);
-        firstSimaStepStage = 1;
+        firstSimaStepStage = -2;
+        vTaskDelay(pdMS_TO_TICKS(1500));
+        firstSimaStepStage = -1;
     }
     if(num == 4){
         esp_timer_stop(goalCheckTimer);
         firstSimaStepStage = 1;
     }
-    
-
 }
 
 void switchcase() {
@@ -195,7 +203,7 @@ void IRAM_ATTR stepperCallbackL(void *arg) {
     } else if (distanceL <= 0) {
         
         if (avoidStage==0&&firstSimaStepStage==1)  mission += 0.5;
-        if (firstSimaStepStage == 0.5) firstSimaStepStage += 0.5 ;
+        if (firstSimaStepStage == 0.5||firstSimaStepStage == -0.5) firstSimaStepStage += 0.5 ;
         if (avoidStage > 0 && escape == 0 && adjust == 0) avoidStage += 0.5; 
         if (escape == 1.5 || escape == 2.5 )                  escape += 0.5;
         if (adjust == 1.5)                                    adjust += 0.5;        
@@ -242,7 +250,7 @@ void IRAM_ATTR checkGoalCallback(void* arg) {
                 distanceR = 0;
         }
 -----------------------------------------------------------------------------------*/ 
-/*------------------------------------for sima 3-----------------------------------
+///*------------------------------------for sima 3-----------------------------------
         if (y_1 <= 1500 && x_1 * 2 + y_1 >= 5000 && -x_1 * 0.545 + y_1 >= 354.55) {
                 reach_goal = true;
                 distanceL = 0;
@@ -252,14 +260,7 @@ void IRAM_ATTR checkGoalCallback(void* arg) {
     }
 }
 
-void stop() {
-    distanceL = 0;
-    distanceR = 0;
-    accelerationL = 0;
-    accelerationR = 0;
-    decelerationL = 0;
-    decelerationR = 0;
-}
+
 
 void sima_core(void *parameter) {
     for (;;) {
@@ -278,9 +279,19 @@ void sima_core(void *parameter) {
                 if (theta > 360) theta = fmod(theta, 360.0);
                 if (theta < 0)   theta += 360;
 
+                if(simaNum==3&&firstSimaStepStage==-1){
+                    turnRight(35);
+                    firstSimaStepStage=-0.5;
+                }
+                else if(simaNum==3&&firstSimaStepStage==0){
+                    goForward(1350);
+                    firstSimaStepStage=0.5;
+                }
+
                 //WebSerial.printf("[SIMA-CORE] Current theta=%.2f\n", theta);
                 //WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f\n", x_1, y_1);
             if (!reach_goal&&firstSimaStepStage==1) {
+
                 if (mission == 1 ) {
                     WebSerial.println("[SIMA-CORE] Executing goToTheta.");
                     goToTheta(x_goal, y_goal);
@@ -292,14 +303,14 @@ void sima_core(void *parameter) {
                     mission = 2.5;
                 }
 
-                if (VL53M < 250 || VL53R < 150) {
+                if (VL53M < 250 /*|| VL53R < 100*/) {
                     decelerationL = 1;
                     decelerationR = 1;
                 } 
-                else if( VL53L < 150){
+                /*else if( VL53L < 100){
                     decelerationL = 1;
                     decelerationR = 1;
-                }
+                }*/
                 else {
                     decelerationL = 0;
                     decelerationR = 0;
@@ -314,13 +325,13 @@ void sima_core(void *parameter) {
                         if (VL53R < 100) escape = 1;
                     }
                     
-                    if (VL53R < 70) {
+                    if (VL53R < 60) {
                         stop();
                         avoidStage = 1;
                         adjust = 3;
                     }
                     
-                    if (VL53L < 70) {
+                    if (VL53L < 60) {
                         stop();
                         avoidStage = 1;
                         adjust = 1;
@@ -375,11 +386,11 @@ void sima_core(void *parameter) {
 void sima_core_superstar(void *parameter) {
     for (;;) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
-                WebSerial.println("[sima_core_superstar] received message");
-            if (!reach_goal&&firstSimaStepStage==1) {
+                vTaskDelay(1);
+                       if (!reach_goal&&firstSimaStepStage==1) {
                 WebSerial.println(mission);
                 if (mission == 1 ) {
-                    goForward(1150);
+                    goForward(1050);
                     mission = 1.5;
                 }         
                 else if (mission == 2 ) {

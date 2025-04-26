@@ -5,7 +5,7 @@
 #include "config.h"
 
 #define maxStepDelay 65
-#define minStepDelay 15
+#define minStepDelay 12
 
 // Declare global variables as extern
 extern float stepDelayL, stepDelayR;
