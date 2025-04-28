@@ -18,6 +18,7 @@
 
 #include "config.h"
 #include "led_control.h"
+#include "voltmeter.h"
 #include "sima_core.h"
 #include "web_interface.h"
 #include "VL53L0X_Sensors.h"
@@ -29,6 +30,7 @@ void setup() {
 
     initSimaCore();
     initLED();
+    initVoltmeter();
 
     // xTaskCreatePinnedToCore(function, "TaskName", stackSize, parameters, priority, taskHandle, coreID);
     // | stackSize:     Size of the stack in bytes
@@ -37,18 +39,19 @@ void setup() {
     // | taskHandle:    Handle to the task (NULL if not needed)
     // | coreID:        Core to run the task on (0 or 1 for ESP32)
     xTaskCreatePinnedToCore(LEDTask, "LEDTask", 4096, NULL, 0, NULL, 0);
-
+    xTaskCreatePinnedToCore(voltmeterTask, "Voltmeter Task", 4096, NULL, 0, NULL, 0);
+    
     // Initialize the web interface components
     webInterface.begin(HOSTNAME);
 
-    if( simaNum == 1 || simaNum == 2 || simaNum == 3 )
+    if( SIMA_NUM == 1 || SIMA_NUM == 2 || SIMA_NUM == 3 )
     xTaskCreatePinnedToCore(sima_core, "SimaCoreTask", 8192, NULL, 2, NULL, 1);
-    else if(simaNum == 4)
+    else if(SIMA_NUM == 4)
     xTaskCreatePinnedToCore(sima_core_superstar, "SimaCoreTaskSuperstar", 8192, NULL, 2, NULL, 1);
 
     // Initialize the starting and goal positions
-    setSimaGoal(simaNum);
-    firstSimaStep(simaNum);
+    setSimaGoal(SIMA_NUM);
+    firstSimaStep(SIMA_NUM);
 
 }
 
