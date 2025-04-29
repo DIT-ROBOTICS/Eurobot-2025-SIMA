@@ -105,25 +105,25 @@ void initSimaCore() {
 
 void setSimaGoal(int num){
     
-    if(num==1){
+    if (num==1) {
         x_1     = 100;
         y_1     = 1710;
         x_goal  = 1050;
         y_goal  = 1500;
     }
-    if(num==2){
+    if (num==2) {
         x_1     = 100;
         y_1     = 1600;
         x_goal  = 1500;
         y_goal  = 1350;
     }
-    if(num==3){
+    if (num==3) {
         x_1     = 100;
         y_1     = 1825;
         x_goal  = 1850;
         y_goal  = 1450;
     }
-    if(num==4){
+    if (num==4) {
         x_1     = 100;
         y_1     = 1975;
         x_goal  = 1400;
@@ -138,24 +138,25 @@ void stop() {
     decelerationL = 0;
     decelerationR = 0;
 }
-void firstSimaStep(int num){
 
-    if(num == 1){
+void firstSimaStep(int num) {
+
+    if (num == 1) {
         firstSimaStepStage = -2;
         vTaskDelay(pdMS_TO_TICKS(500));
         goForward(120);
         firstSimaStepStage = 0.5;
     }
-    if(num == 2 ){
+    if (num == 2 ) {
         goForward(550);
         firstSimaStepStage = 0.5;
     }
-    if(num == 3){
+    if (num == 3) {
         firstSimaStepStage = -2;
         vTaskDelay(pdMS_TO_TICKS(1800));
         firstSimaStepStage = -1;
     }
-    if(num == 4){
+    if (num == 4) {
         esp_timer_stop(goalCheckTimer);
         firstSimaStepStage = 1;
     }
@@ -236,27 +237,27 @@ void IRAM_ATTR stepperCallbackR(void *arg) {
 void IRAM_ATTR checkGoalCallback(void* arg) {
     if (!reach_goal) {
 
-/*------------------------------------for sima 1-----------------------------------
-        if (y_1 <= 1500 && y_1 >= 2 * x_1 - 1000 && y_1 >= (-6.0 / 11.0) * x_1 + (21900.0 / 11.0)) {
-                reach_goal = true;
-                distanceL = 0;
-                distanceR = 0;
-        }
------------------------------------------------------------------------------------*/        
+// ------------------------------------for sima 1-----------------------------------
+    if (y_1 <= 1500 && y_1 >= 2 * x_1 - 1000 && y_1 >= (-6.0 / 11.0) * x_1 + (21900.0 / 11.0)) {
+            reach_goal = true;
+            distanceL = 0;
+            distanceR = 0;
+    }
+// -----------------------------------------------------------------------------------
 /*------------------------------------for sima 2-----------------------------------
-        if (x_1>=1300 && x_1<=1700 && y_1>=1300&&y_1<=1500) {
-                reach_goal = true;
-                distanceL = 0;
-                distanceR = 0;
-        }
+    if (x_1>=1300 && x_1<=1700 && y_1>=1300&&y_1<=1500) {
+            reach_goal = true;
+            distanceL = 0;
+            distanceR = 0;
+    }
 -----------------------------------------------------------------------------------*/ 
-///*------------------------------------for sima 3-----------------------------------
-        if (y_1 <= 1500 && x_1 * 2 + y_1 >= 5000 && -x_1 * 0.545 + y_1 >= 354.55) {
-                reach_goal = true;
-                distanceL = 0;
-                distanceR = 0;
-        }
-//-----------------------------------------------------------------------------------*/
+/*------------------------------------for sima 3-----------------------------------
+    if (y_1 <= 1500 && x_1 * 2 + y_1 >= 5000 && -x_1 * 0.545 + y_1 >= 354.55) {
+            reach_goal = true;
+            distanceL = 0;
+            distanceR = 0;
+    }
+-----------------------------------------------------------------------------------*/
     }
 }
 
@@ -279,11 +280,11 @@ void sima_core(void *parameter) {
                 if (theta > 360) theta = fmod(theta, 360.0);
                 if (theta < 0)   theta += 360;
 
-                if(simaNum==3&&firstSimaStepStage==-1){
+                if (SIMA_NUM == 3 && firstSimaStepStage == -1) {
                     turnRight(35);
                     firstSimaStepStage=-0.5;
                 }
-                else if(simaNum==3&&firstSimaStepStage==0){
+                else if (SIMA_NUM == 3 && firstSimaStepStage == 0) {
                     goForward(1350);
                     firstSimaStepStage=0.5;
                 }

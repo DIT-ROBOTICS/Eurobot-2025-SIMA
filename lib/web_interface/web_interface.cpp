@@ -1,4 +1,5 @@
 #include "web_interface.h"
+#include "voltmeter.h"
 
 // Create global instance
 WebInterface webInterface;
@@ -13,11 +14,12 @@ WebInterface::WebInterface() :
     server(80),
     NW          (&server),
     dashboard   (&server, "/dashboard", true),
-    temperature (&dashboard, TEMPERATURE_CARD, "Temperature", "°C"),
-    humidity    (&dashboard, HUMIDITY_CARD,    "Humidity", "%"),
-    status      (&dashboard, STATUS_CARD,      "Test Status", DASH_STATUS_SUCCESS),
-    button      (&dashboard, BUTTON_CARD,      "Test Button"),
-    slider      (&dashboard, SLIDER_CARD,      "Test Slider", "", 0, 255, 1),
+    // temperature (&dashboard, TEMPERATURE_CARD, "Temperature", "°C"),
+    // humidity    (&dashboard, HUMIDITY_CARD,    "Humidity", "%"),
+    // status      (&dashboard, STATUS_CARD,      "Test Status", DASH_STATUS_SUCCESS),
+    // button      (&dashboard, BUTTON_CARD,      "Test Button"),
+    // slider      (&dashboard, SLIDER_CARD,      "Test Slider", "", 0, 255, 1),
+    batteryBar  (&dashboard, PROGRESS_CARD,    "Battery", "%", 0, 255),
     dashTaskHandle      (NULL),
     webSerialTaskHandle (NULL),
     elegantOTATaskHandle(NULL),
@@ -52,21 +54,21 @@ void WebInterface::begin(const char* hostname) {
     server.rewrite("/", "/dashboard").setFilter(ON_STA_FILTER);
     
     // Setup Dashboard
-    status.update("Warning message", DASH_STATUS_WARNING);
+    // status.update("Warning message", DASH_STATUS_WARNING);
     
     // Button card callback
-    button.attachCallback([this](int value) {
-        sendWebSerialFormat("Button Callback Triggered: %s", (value == 1) ? "true" : "false");
-        button.update(value);
-        dashboard.sendUpdates();
-    });
+    // button.attachCallback([this](int value) {
+    //     sendWebSerialFormat("Button Callback Triggered: %s", (value == 1) ? "true" : "false");
+    //     button.update(value);
+    //     dashboard.sendUpdates();
+    // });
     
     // Slider card callback
-    slider.attachCallback([this](float value) {
-        Serial.printf("Slider Callback Triggered: %f\n", value);
-        slider.update(value);
-        dashboard.sendUpdates();
-    });
+    // slider.attachCallback([this](float value) {
+    //     Serial.printf("Slider Callback Triggered: %f\n", value);
+    //     slider.update(value);
+    //     dashboard.sendUpdates();
+    // });
 
     // Initialize WebSerial
     WebSerial.begin(&server);
@@ -255,9 +257,15 @@ void WebInterface::netWizardTask(void *parameter) {
 
 void WebInterface::dashTask(void *parameter) {
     for (;;) {
-        /* Update Card Values */
-        webInterface.temperature.update((int)random(0, 50));
-        webInterface.humidity.update((int)random(0, 100));
+        /* Update Battery Voltage Progress Bar by mapping 9-10.95V to 0-255 range */
+        const float minVoltage = 9.0;
+        const float maxVoltage = 10.95;
+        
+        // Constrain voltage to defined range and map to 0-255
+        float constrainedVoltage = constrain(Vbattf, minVoltage, maxVoltage);
+        int batteryLevel = (int)((constrainedVoltage - minVoltage) * 255.0 / (maxVoltage - minVoltage));
+        
+        webInterface.batteryBar.update(batteryLevel, "%");
         
         /* Send Updates to our Dashboard (realtime) */
         webInterface.getDashboard()->sendUpdates();
@@ -323,6 +331,8 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
         } else {
             WebSerial.println("Invalid MODE format. Use: MODE <value>");
         }
+    } else if (d == "INFO") {
+        WebSerial.printf("Battery Voltage: %.2f V\n", Vbattf);
     } else {
         WebSerial.println("Unknown command. ");
     }

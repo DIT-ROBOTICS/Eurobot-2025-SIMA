@@ -55,11 +55,12 @@ private:
     ESPDash dashboard;
     
     // Dashboard cards
-    Card temperature;
-    Card humidity;
-    Card status;
-    Card button;
-    Card slider;
+    // Card temperature;
+    // Card humidity;
+    // Card status;
+    // Card button;
+    // Card slider;
+    Card batteryBar;
     
     // Task handles
     TaskHandle_t dashTaskHandle;
