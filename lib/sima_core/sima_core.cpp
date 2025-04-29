@@ -152,7 +152,7 @@ void firstSimaStep(int num){
     }
     if(num == 3){
         firstSimaStepStage = -2;
-        vTaskDelay(pdMS_TO_TICKS(1500));
+        vTaskDelay(pdMS_TO_TICKS(1800));
         firstSimaStepStage = -1;
     }
     if(num == 4){
