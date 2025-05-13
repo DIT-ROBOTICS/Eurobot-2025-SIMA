@@ -34,7 +34,7 @@ void voltmeter() {
   Vbattf = VOLTMETER_CALIBRATION * Vbatt / SLIDING_WINDOW_SIZE / 1000.0 + offset;
   if (Vbattf < 3) Vbattf = 0.0;
 
-  if (Vbattf < 9.5) { mode = LOW_BATTERY;  }
+  if (Vbattf < 9) { mode = LOW_BATTERY;  }
   else              { mode = DEFAULT_MODE; }
   // WebSerial.printf("Battery Voltage: %.2f V\n", Vbattf);
 }

@@ -3,12 +3,21 @@
 #include <Arduino.h>
 #include <esp_timer.h>
 #include "config.h"
+#include "driver/gpio.h"
+#include "soc/gpio_struct.h"   
 
-#define maxStepDelay 65
-#define minStepDelay 12
+
+#define maxStepDelay 180
+#define minStepDelay 55
+#define accRate 0.015
+#define decRate 0.015
+#define decDistance 200
+#define ACC_FIXED 33000
+#define SCALE     1000000000ULL
+
 
 // Declare global variables as extern
-extern float stepDelayL, stepDelayR;
+extern float stepDelayL, stepDelayR, preStepDelayL, preStepDelayR;
 extern bool accelerationL, accelerationR, decelerationL, decelerationR;
 extern bool rotatingL, rotatingR, going, goingBack, reach_goal;
 extern bool avoiding;
@@ -22,6 +31,8 @@ extern esp_timer_handle_t stepperTimerL, stepperTimerR, goalCheckTimer;
 extern volatile bool start_reach_goal;
 
 void sima_core(void *parameter);
+void sima_core_1(void *parameter);
+void sima_core_2(void *parameter);
 void sima_core_superstar(void *parameter);
 void initSimaCore();
 void firstSimaStep(int num);

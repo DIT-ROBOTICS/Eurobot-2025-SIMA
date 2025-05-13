@@ -2,10 +2,10 @@
 #define CONFIG_H
 
 // SIMA number              // TO-DO: Change SIMA number here
-#define SIMA_NUM            1
+#define SIMA_NUM            3
 
 // WiFi and mDNS            // TO-DO: Change hostname here
-#define HOSTNAME            "DIT-SIMA-01"
+#define HOSTNAME            "DIT-SIMA-03"
 
 // Voltmeter - Battery voltage measurement
 // | Formula:
@@ -35,8 +35,10 @@
 #define MS1_PIN             4
 #define MS2_PIN             5
 #define STEP_PIN_L          6
+#define STEP_BIT_L (1 << STEP_PIN_L)
 #define DIR_PIN_L           7
 #define STEP_PIN_R          15
+#define STEP_BIT_R (1 << STEP_PIN_R)
 #define DIR_PIN_R           16
 
 // Servo pins

@@ -3,12 +3,13 @@
 #include <Arduino.h>
 #include "config.h"
 
+#define STEPS_PER_REV       3200  // 200 * 8 = 1600 microsteps, 1600 * 2
 #define wheelCircum         47.17 * PI              // mm
-#define lengthPerStep       wheelCircum / 12800
-#define wheelDistance       83                  // mm (by tiral)
+#define lengthPerStep       wheelCircum / STEPS_PER_REV // mm
+#define wheelDistance       83                // mm (by tiral)
 #define carCircum           wheelDistance * PI
-#define STEPS_PER_REV       12800  // 200 * 32 = 6400 microsteps, 6400 * 2
-#define rotateAnglePerStep  0.01589
+#define rotateAnglePerStep  ((lengthPerStep) / (carCircum)) * 360
+
 
 void goForward(float distance);
 void goBackward(float distance);
