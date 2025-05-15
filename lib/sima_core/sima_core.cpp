@@ -122,6 +122,7 @@ void setSimaGoal(int num){
     if (num==3) {
         x_1     = 100;
         y_1     = 1825;
+        theta   = 334.75;
         x_goal  = 1850;
         y_goal  = 1450;
     }
@@ -151,9 +152,8 @@ void firstSimaStep(int num) {
         firstSimaStepStage = 1;
     }
     if (num == 3) {
-        firstSimaStepStage = -2;
         vTaskDelay(pdMS_TO_TICKS(1800));
-        firstSimaStepStage = -1;
+        firstSimaStepStage = 1;
     }
     if (num == 4) {
         esp_timer_stop(goalCheckTimer);
@@ -449,10 +449,10 @@ void sima_core_3(void *parameter) {
                     goForward(1625);
                     mission = 1.5;
                 }else if (mission == 2 ) {
-                    turnLeft(79.32);
+                    turnLeft(75.5);
                     mission = 2.5;
                 }else if (mission == 3 ) {
-                    goForward(602);
+                    goForward(550);
                     mission = 3.5;
                 }
 
@@ -514,13 +514,26 @@ void sima_core_3(void *parameter) {
 }
 
 void sima_core_superstar(void *parameter) {
+    unsigned long startTime = 0;
+    bool sima_started = false;
+    bool sima_timeout = false;
     for (;;) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
+            if (!sima_started) {
+                startTime = millis();
+                sima_started = true;
+            }
+            if (sima_started && !sima_timeout) {
+                if (millis() - startTime > 14000) {
+                    sima_timeout = true;
+                    continue;
+                }
+            }
                 vTaskDelay(1);
-            if (!reach_goal&&firstSimaStepStage==1) {
+            if (!reach_goal&&firstSimaStepStage==1&&!sima_timeout) {
                 WebSerial.println(mission);
                 if (mission == 1 ) {
-                    goForward(1050);
+                    goForward(1100);
                     mission = 1.5;
                 }         
                 else if (mission == 2 ) {
@@ -528,13 +541,24 @@ void sima_core_superstar(void *parameter) {
                     mission = 2.5;
                 }
                 else if (mission == 3 ) {
-                    goBackward(300);
+                    goBackward(280);
                     mission = 3.5;
                 }
                 else if (mission == 4 ) {
                     reach_goal=1;
                 }
             }
-        }    
+            if (sima_timeout) {
+                WebSerial.println("[SIMA-CORE] Timeout reached, stopping motors.");
+                stop();
+                servoL.write(0);
+                servoR.write(0);
+                vTaskDelay(1000);
+                servoL.write(45);
+                servoR.write(45);
+                vTaskDelay(1000);
+            }     
+        }
+   
     }        
 }

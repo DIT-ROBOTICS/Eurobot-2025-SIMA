@@ -30,9 +30,10 @@ extern esp_timer_handle_t stepperTimerL, stepperTimerR, goalCheckTimer;
 // Declare start_reach_goal as extern to link it across files
 extern volatile bool start_reach_goal;
 
-void sima_core(void *parameter);
+
 void sima_core_1(void *parameter);
 void sima_core_2(void *parameter);
+void sima_core_3(void *parameter);
 void sima_core_superstar(void *parameter);
 void initSimaCore();
 void firstSimaStep(int num);
