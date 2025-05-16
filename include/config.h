@@ -2,10 +2,10 @@
 #define CONFIG_H
 
 // SIMA number              // TO-DO: Change SIMA number here
-#define SIMA_NUM            4
+#define SIMA_NUM            3
 
 // WiFi and mDNS            // TO-DO: Change hostname here
-#define HOSTNAME            "DIT-SIMA-04"
+#define HOSTNAME            "DIT-SIMA-03"
 
 // Voltmeter - Battery voltage measurement
 // | Formula:

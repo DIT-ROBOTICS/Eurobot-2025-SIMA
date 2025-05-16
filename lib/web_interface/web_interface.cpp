@@ -311,10 +311,13 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
     WebSerial.println(d);
 
     // Check commands
-    if (d == "GO") {
-        start_reach_goal = true;
-        WebSerial.println("SIMA GO command received. Starting SIMA...");
-    } else if (d == "RESTORE") {
+    if (d == "GO1") {
+        start_reach_goal = 1;
+        WebSerial.println("SIMA GO1 command received. Starting SIMA...");
+    }else if (d == "GO2") {
+        start_reach_goal = 2;
+        WebSerial.println("SIMA GO2 command received. Starting SIMA...");
+    }else if (d == "RESTORE") {
         WebSerial.println("Factory reset command received. Erasing NW configuration...");
         webInterface.getNetWizard()->erase();
         delay(1000);

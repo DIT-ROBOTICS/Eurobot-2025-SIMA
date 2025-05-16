@@ -25,10 +25,11 @@ extern float x_1, y_1, theta, x_goal, y_goal;
 extern float distanceL, distanceR, range;
 extern float mission, avoidStage, firstSimaStepStage, escape, adjust;
 extern int step, preStep, test;
-extern esp_timer_handle_t stepperTimerL, stepperTimerR, goalCheckTimer;
+extern esp_timer_handle_t stepperTimerL, stepperTimerR;
+//extern esp_timer_handle_t goalCheckTimer;
 
 // Declare start_reach_goal as extern to link it across files
-extern volatile bool start_reach_goal;
+extern volatile int start_reach_goal;
 
 
 void sima_core_1(void *parameter);
@@ -36,6 +37,5 @@ void sima_core_2(void *parameter);
 void sima_core_3(void *parameter);
 void sima_core_superstar(void *parameter);
 void initSimaCore();
-void firstSimaStep(int num);
 void switchcase();
 void setSimaGoal(int num);

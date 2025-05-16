@@ -53,10 +53,6 @@ void setup() {
     else if(SIMA_NUM == 4)
     xTaskCreatePinnedToCore(sima_core_superstar, "SimaCoreTaskSuperstar", 8192, NULL, 2, NULL, 1);
 
-    // Initialize the starting and goal positions
-    setSimaGoal(SIMA_NUM);
-    firstSimaStep(SIMA_NUM);
-
 }
 
 void loop() {}

@@ -25,18 +25,21 @@ void VL53L0X_Sensors::begin() {
     delay(10);
     sensor1.init();
     sensor1.setAddress(0x30);
+    Serial.println("Sensor 1 initialized and address set to 0x30");
 
     // Start second sensor
     digitalWrite(XSHUT2, HIGH);
     delay(10);
     sensor2.init();
     sensor2.setAddress(0x31);
+    Serial.println("Sensor 2 initialized and address set to 0x31");
 
     // Start third sensor
     digitalWrite(XSHUT3, HIGH);
     delay(10);
     sensor3.init();
     sensor3.setAddress(0x32);
+    Serial.println("Sensor 3 initialized and address set to 0x32");
 
     // Start continuous ranging mode
     sensor1.startContinuous();
@@ -49,5 +52,6 @@ void VL53L0X_Sensors::readSensors() {
     VL53L=sensor1.readRangeContinuousMillimeters();
     VL53M=sensor2.readRangeContinuousMillimeters();
     VL53R=sensor3.readRangeContinuousMillimeters();
+    
 
 }
