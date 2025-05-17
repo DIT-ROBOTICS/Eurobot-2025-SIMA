@@ -6,9 +6,6 @@
 #include "driver/gpio.h"
 #include "soc/gpio_struct.h"   
 
-
-#define maxStepDelay 180
-#define minStepDelay 55
 #define accRate 0.015
 #define decRate 0.015
 #define decDistance 200
@@ -25,6 +22,7 @@ extern float x_1, y_1, theta, x_goal, y_goal;
 extern float distanceL, distanceR, range;
 extern float mission, avoidStage, firstSimaStepStage, escape, adjust;
 extern int step, preStep, test;
+extern int maxStepDelay, minStepDelay;
 extern esp_timer_handle_t stepperTimerL, stepperTimerR;
 //extern esp_timer_handle_t goalCheckTimer;
 
@@ -39,3 +37,4 @@ void sima_core_superstar(void *parameter);
 void initSimaCore();
 void switchcase();
 void setSimaGoal(int num);
+void party_time();         
