@@ -37,7 +37,7 @@ float x_1,    y_1,
       mission,  avoidStage,
       adjust;
 int step=0, preStep=0, test=1, team=1;
-int maxStepDelay = 180, minStepDelay = 55;;
+int maxStepDelay = 110, minStepDelay = 40, avoidStepDelay = 150;
 
 
 void initSimaCore() {
@@ -140,7 +140,7 @@ void setSimaGoal(int num, int team){
     }
     if (num==3&&team==1) {
         x_1     = 100;
-        y_1     = 1600;
+        y_1     = 1610;
         theta   = 356.4;
         x_goal  = 1850;
         y_goal  = 1500;
@@ -183,8 +183,6 @@ void IRAM_ATTR stepperCallbackL(void *arg) {
     distanceL -= lengthPerStep;
     if      (going)       step  += 1;
     else if (goingBack)   step  -= 1;
-    else if (rotatingL)   theta += rotateAnglePerStep;
-    else if (rotatingR)   theta -= rotateAnglePerStep;
 
     if (accelerationL) {
         stepDelayL-=accRate;
@@ -199,7 +197,7 @@ void IRAM_ATTR stepperCallbackL(void *arg) {
     }
     // deceleration due to too close to an obstacle
     if (decelerationL) {
-        if (stepDelayL < maxStepDelay) stepDelayL+=decRate;
+        if (stepDelayL < avoidStepDelay) stepDelayL+=decRate;
     }
     if (distanceL > 0) {
         esp_timer_start_once(stepperTimerL, stepDelayL);
@@ -283,10 +281,19 @@ void avoidance(){
                 adjust = 3;
         }                                    
     }                    
-                
+    if (VL53M < 500){
+        decelerationL = true;
+        decelerationR = true;
+    }else if (VL53M > 500){
+        decelerationL = false;
+        decelerationR = false;
+        accelerationL = true;
+        accelerationR = true;
+    }             
     if (avoidStage == 1 ) {
         mission += 10; //never going back
         if (adjust == 1) {
+            vTaskDelay(pdMS_TO_TICKS(500));
             if(team == 1){
                 turnRight(45); 
             }else if(team == 2){
@@ -294,9 +301,11 @@ void avoidance(){
             }                        
             adjust = 4.5;
             } else if (adjust == 2) { 
+                vTaskDelay(pdMS_TO_TICKS(500));
                 turnLeft(20);
                 adjust = 4.5;
             } else if (adjust == 3) {
+                vTaskDelay(pdMS_TO_TICKS(500));
                 turnRight(20);
                 adjust = 4.5;
             } else if (adjust == 5) {
@@ -304,12 +313,15 @@ void avoidance(){
                 avoidStage = 2;
             }
     }else if (avoidStage == 2 ) {
-            goForward(75);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            goForward(150);
             avoidStage = 2.5;
     }else if (avoidStage == 3 ) {
+            vTaskDelay(pdMS_TO_TICKS(500));
             goToTheta(x_goal, y_goal);
             avoidStage = 3.5;
     }else if (avoidStage == 4 ) {
+            vTaskDelay(pdMS_TO_TICKS(500));
             goToDistance(x_goal, y_goal);
             avoidStage = 4.5;
     }else if (avoidStage == 5 ) {
@@ -361,7 +373,7 @@ void sima_core_1(void *parameter) {
                     reach_goal=1;
                 }
             }
-            if (sima_timeout) {
+            if (sima_timeout||reach_goal) {
                 party_time();
             }
         }    
@@ -391,8 +403,8 @@ void sima_core_2(void *parameter) {
                 }
             }
             
-                sensors.readSensors();
-
+            sensors.readSensors();
+            //Serial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f, theta=%.2f, avoidStage=%.2n\n", x_1, y_1, theta, avoidStage);
             //WebSerial.printf("[SIMA-VL53] VL53L=%.2f, VL53M=%.2f, VL53R=%.2f\n", VL53L, VL53M, VL53R);
             if (step != 0) {
                 preStep = step;
@@ -419,7 +431,7 @@ void sima_core_2(void *parameter) {
                 }
             }
 
-            if (sima_timeout) {
+            if (sima_timeout||reach_goal) {
                 party_time();
             }
         }
@@ -450,6 +462,7 @@ void sima_core_3(void *parameter) {
                 }
             }
                 sensors.readSensors();
+                //WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f, theta=%.2f, adjust=%.2n, avoidStage=%.2n\n", x_1, y_1, theta, adjust, avoidStage);
                 
                 if (step != 0) {
                     preStep = step;
@@ -465,14 +478,15 @@ void sima_core_3(void *parameter) {
                 // WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f\n", x_1, y_1);
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
-                    goToDistance(x_goal, y_goal);
+                    turnLeft(45);
+                    //goToDistance(x_goal, y_goal);
                     mission = 1.5;
                 }else if (mission == 2 ) {
                     reach_goal=1;
                 }
                 avoidance();
             }
-            if (sima_timeout) {
+            if (sima_timeout||reach_goal) {
                 party_time();
             }
         }
@@ -511,6 +525,7 @@ void sima_core_superstar(void *parameter) {
                     mission = 1.5;
                 }         
                 else if (mission == 2 ) {
+                    vTaskDelay(pdMS_TO_TICKS(500));
                     if(team == 1){
                         turnLeft(90);
                     }
@@ -527,7 +542,7 @@ void sima_core_superstar(void *parameter) {
                     reach_goal=1;
                 }
             }
-            if (sima_timeout) {
+            if (sima_timeout||reach_goal) {
                 party_time();
             }     
         }

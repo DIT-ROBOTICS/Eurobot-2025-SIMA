@@ -37,27 +37,29 @@ void goBackward(float distance) {
 void turnLeft(float degree) {
     switchcase();
     rotatingL = true;
-    stepDelayL = maxStepDelay;
-    stepDelayR = maxStepDelay;
+    stepDelayL = avoidStepDelay;
+    stepDelayR = avoidStepDelay;
     digitalWrite(DIR_PIN_L, HIGH);
     digitalWrite(DIR_PIN_R, HIGH);
     distanceL = carCircum * degree / 360;
     distanceR = carCircum * degree / 360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
     esp_timer_start_once(stepperTimerR, stepDelayR);
+    theta += degree;
 }
 
 void turnRight(float degree) {
     switchcase();
     rotatingR = true;
-    stepDelayL = maxStepDelay;
-    stepDelayR = maxStepDelay;
+    stepDelayL = avoidStepDelay;
+    stepDelayR = avoidStepDelay;
     digitalWrite(DIR_PIN_L, LOW);
     digitalWrite(DIR_PIN_R, LOW);
     distanceL = carCircum * degree / 360;
     distanceR = carCircum * degree / 360;
     esp_timer_start_once(stepperTimerL, stepDelayL);
     esp_timer_start_once(stepperTimerR, stepDelayR);
+    theta -= degree;
 }
 
 void goToTheta(float x_2, float y_2) {

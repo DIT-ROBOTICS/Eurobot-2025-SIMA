@@ -14,7 +14,7 @@
 
 
 // Declare global variables as extern
-extern float stepDelayL, stepDelayR, preStepDelayL, preStepDelayR;
+extern float stepDelayL, stepDelayR;
 extern bool accelerationL, accelerationR, decelerationL, decelerationR;
 extern bool rotatingL, rotatingR, going, goingBack, reach_goal;
 extern bool avoiding;
@@ -22,7 +22,7 @@ extern float x_1, y_1, theta, x_goal, y_goal;
 extern float distanceL, distanceR, range;
 extern float mission, avoidStage, firstSimaStepStage, escape, adjust;
 extern int step, preStep, test;
-extern int maxStepDelay, minStepDelay;
+extern int maxStepDelay, minStepDelay, avoidStepDelay;
 extern esp_timer_handle_t stepperTimerL, stepperTimerR;
 //extern esp_timer_handle_t goalCheckTimer;
 
