@@ -317,6 +317,154 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
     }else if (d == "GO2") {
         start_reach_goal = 2;
         WebSerial.println("SIMA GO2 command received. Starting SIMA...");
+    }else if (d.startsWith("SIMA+")) {
+        // Extract the number part after "SIMA+"
+        String numStr = d.substring(5);
+        int num = numStr.toInt();
+        
+        if (num > 0) {
+            // WebSerial.printf("SIMA command received: %d\n", num);
+            
+            if (num < 10) {
+                // Single-digit: send to all SIMA devices except self
+                WebSerial.printf("Sending %d to all SIMA devices (except self)\n", num);
+                struct_message msg;
+                msg.sima_start = num;
+                
+                // Send individual messages to each SIMA except self
+                for (int i = 1; i <= 8; i++) {
+                    if (i == SIMA_NUM) {
+                        // Skip self - set directly instead
+                        start_reach_goal = num;
+                        WebSerial.printf("Setting start_reach_goal = %d locally\n", num);
+                        continue;
+                    }
+                    
+                    // Use static MAC addresses for each SIMA
+                    uint8_t* targetMac = NULL;
+                    switch (i) {
+                        case 1: {
+                            static uint8_t mac[] = SIMA_01;
+                            targetMac = mac;
+                            break;
+                        }
+                        case 2: {
+                            static uint8_t mac[] = SIMA_02;
+                            targetMac = mac;
+                            break;
+                        }
+                        case 3: {
+                            static uint8_t mac[] = SIMA_03;
+                            targetMac = mac;
+                            break;
+                        }
+                        case 4: {
+                            static uint8_t mac[] = SIMA_04;
+                            targetMac = mac;
+                            break;
+                        }
+                        case 5: {
+                            static uint8_t mac[] = SIMA_05;
+                            targetMac = mac;
+                            break;
+                        }
+                        case 6: {
+                            static uint8_t mac[] = SIMA_06;
+                            targetMac = mac;
+                            break;
+                        }
+                        case 7: {
+                            static uint8_t mac[] = SIMA_07;
+                            targetMac = mac;
+                            break;
+                        }
+                        case 8: {
+                            static uint8_t mac[] = SIMA_08;
+                            targetMac = mac;
+                            break;
+                        }
+                    }
+                    
+                    if (targetMac != NULL) {
+                        WebSerial.printf("Sending %d to SIMA_%02d\n", num, i);
+                        espNow.sendMessage(targetMac, msg);
+                    }
+                }
+            } else if (num < 100) {
+                // Double-digit: tens digit is address index (1-based), ones digit is data
+                int addressIndex = (num / 10) - 1;
+                int dataToSend = num % 10;
+                
+                if (addressIndex >= 0 && addressIndex < 8) {
+                    // Check if trying to send to self (can cause restart)
+                    if (addressIndex + 1 == SIMA_NUM) {
+                        WebSerial.println("Warning: Cannot send ESP-NOW message to self (would cause restart)");
+                        // Set directly instead of sending
+                        start_reach_goal = dataToSend;
+                        WebSerial.printf("Setting start_reach_goal = %d locally\n", dataToSend);
+                    } else {
+                        WebSerial.printf("Sending %d to SIMA_%02d\n", dataToSend, addressIndex + 1);
+                        
+                        // Get the appropriate MAC address using static arrays
+                        uint8_t* targetMac = NULL;
+                        switch (addressIndex + 1) {
+                            case 1: {
+                                static uint8_t mac[] = SIMA_01;
+                                targetMac = mac;
+                                break;
+                            }
+                            case 2: {
+                                static uint8_t mac[] = SIMA_02;
+                                targetMac = mac;
+                                break;
+                            }
+                            case 3: {
+                                static uint8_t mac[] = SIMA_03;
+                                targetMac = mac;
+                                break;
+                            }
+                            case 4: {
+                                static uint8_t mac[] = SIMA_04;
+                                targetMac = mac;
+                                break;
+                            }
+                            case 5: {
+                                static uint8_t mac[] = SIMA_05;
+                                targetMac = mac;
+                                break;
+                            }
+                            case 6: {
+                                static uint8_t mac[] = SIMA_06;
+                                targetMac = mac;
+                                break;
+                            }
+                            case 7: {
+                                static uint8_t mac[] = SIMA_07;
+                                targetMac = mac;
+                                break;
+                            }
+                            case 8: {
+                                static uint8_t mac[] = SIMA_08;
+                                targetMac = mac;
+                                break;
+                            }
+                        }
+                        
+                        if (targetMac != NULL) {
+                            struct_message msg;
+                            msg.sima_start = dataToSend;
+                            espNow.sendMessage(targetMac, msg);
+                        }
+                    }
+                } else {
+                    WebSerial.println("Invalid SIMA device index (must be 1-8)");
+                }
+            } else {
+                WebSerial.println("Invalid SIMA command (must be 1-99)");
+            }
+        } else {
+            WebSerial.println("Invalid SIMA command format. Use: SIMA+<number>");
+        }
     }else if (d == "RESTORE") {
         WebSerial.println("Factory reset command received. Erasing NW configuration...");
         webInterface.getNetWizard()->erase();

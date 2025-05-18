@@ -2,10 +2,30 @@
 #define CONFIG_H
 
 // SIMA number              // TO-DO: Change SIMA number here
-#define SIMA_NUM            3
+#define SIMA_NUM            0
 
 // WiFi and mDNS            // TO-DO: Change hostname here
-#define HOSTNAME            "DIT-SIMA-07"
+#define HOSTNAME            "DIT-SIMA-00"
+
+// ESP-NOW for SIMA communication
+//  [94:a9:90:07:00:78]---[01]
+//  [94:a9:90:06:E6:00]---[02]
+//  [94:a9:90:0b:86:d8]---[03]
+//  [94:a9:90:05:57:d8]---[04]
+//  [94:a9:90:0b:64:f0]---[05]
+//  [94:a9:90:06:e6:b4]---[06]
+//  [94:a9:90:05:4d:48]---[07]
+//  [94:a9:90:05:57:f4]---[08]
+
+// SIMA MAC Addresses
+#define SIMA_01 { 0x94, 0xa9, 0x90, 0x07, 0x00, 0x78 }
+#define SIMA_02 { 0x94, 0xa9, 0x90, 0x06, 0xe6, 0x00 }
+#define SIMA_03 { 0x94, 0xa9, 0x90, 0x0b, 0x86, 0xd8 }
+#define SIMA_04 { 0x94, 0xa9, 0x90, 0x05, 0x57, 0xd8 }
+#define SIMA_05 { 0x94, 0xa9, 0x90, 0x0b, 0x64, 0xf0 }
+#define SIMA_06 { 0x94, 0xa9, 0x90, 0x06, 0xe6, 0xb4 }
+#define SIMA_07 { 0x94, 0xa9, 0x90, 0x05, 0x4d, 0x48 }
+#define SIMA_08 { 0x94, 0xa9, 0x90, 0x05, 0x57, 0xf4 }
 
 // Voltmeter - Battery voltage measurement
 // | Formula:
