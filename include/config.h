@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // SIMA number              // TO-DO: Change SIMA number here
-#define SIMA_NUM            00
+#define SIMA_NUM            0
 
 // WiFi and mDNS            // TO-DO: Change hostname here
 #define HOSTNAME            "DIT-SIMA-00" 
