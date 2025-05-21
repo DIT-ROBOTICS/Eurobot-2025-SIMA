@@ -2,10 +2,10 @@
 #define CONFIG_H
 
 // SIMA number              // TO-DO: Change SIMA number here
-#define SIMA_NUM            4
+#define SIMA_NUM            00
 
 // WiFi and mDNS            // TO-DO: Change hostname here
-#define HOSTNAME            "DIT-SIMA-08" 
+#define HOSTNAME            "DIT-SIMA-00" 
 
 // ESP-NOW for SIMA communication
 //  [94:a9:90:07:00:78]---[01]
@@ -16,6 +16,8 @@
 //  [94:a9:90:06:e6:b4]---[06]
 //  [94:a9:90:05:4d:48]---[07]
 //  [94:a9:90:05:57:f4]---[08]
+//  --------------------------
+//  [94:a9:90:0b:bb:bc]---[11] (07)
 
 // SIMA MAC Addresses
 #define SIMA_01 { 0x94, 0xa9, 0x90, 0x07, 0x00, 0x78 }
@@ -26,6 +28,11 @@
 #define SIMA_06 { 0x94, 0xa9, 0x90, 0x06, 0xe6, 0xb4 }
 #define SIMA_07 { 0x94, 0xa9, 0x90, 0x05, 0x4d, 0x48 }
 #define SIMA_08 { 0x94, 0xa9, 0x90, 0x05, 0x57, 0xf4 }
+
+#define SIMA_09 { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } // TO-DO: Replace with actual MAC address
+#define SIMA_10 { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } // TO-DO: Replace with actual MAC address
+#define SIMA_11 { 0x94, 0xa9, 0x90, 0x0b, 0xbb, 0xbc }
+#define SIMA_12 { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } // TO-DO: Replace with actual MAC address
 
 // Voltmeter - Battery voltage measurement
 // | Formula:
