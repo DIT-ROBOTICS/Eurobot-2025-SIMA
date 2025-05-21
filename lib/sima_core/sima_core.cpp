@@ -37,7 +37,7 @@ float x_1,    y_1,
       mission,  avoidStage,
       adjust;
 int step=0, preStep=0, test=1, team=1;
-int maxStepDelay = 110, minStepDelay = 50, avoidStepDelay = 150;
+int maxStepDelay = 100, minStepDelay = 50, avoidStepDelay = 150;
 
 
 void initSimaCore() {
@@ -141,14 +141,14 @@ void setSimaGoal(int num, int team){
     if (num==3&&team==1) {
         x_1     = 100;
         y_1     = 1610;
-        theta   = 356.4;
+        theta   = 351.55;
         x_goal  = 1850;
         y_goal  = 1500;
     }
     if (num==3&&team==2) {
         x_1     = 2900;
         y_1     = 1610;
-        theta   = 183.6;
+        theta   = 188.45;
         x_goal  = 1150;
         y_goal  = 1500;
     }

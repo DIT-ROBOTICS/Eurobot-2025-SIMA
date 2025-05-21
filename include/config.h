@@ -5,7 +5,7 @@
 #define SIMA_NUM            4
 
 // WiFi and mDNS            // TO-DO: Change hostname here
-#define HOSTNAME            "DIT-SIMA-04" 
+#define HOSTNAME            "DIT-SIMA-08" 
 
 // ESP-NOW for SIMA communication
 //  [94:a9:90:07:00:78]---[01]
