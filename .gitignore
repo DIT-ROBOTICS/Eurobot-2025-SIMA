@@ -8,3 +8,6 @@
 
 # Ignore the PlatformIO directory
 **/.pio/
+
+# Ignore the build directory
+**/build-x/

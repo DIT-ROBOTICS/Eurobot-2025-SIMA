@@ -17,7 +17,7 @@
 #include "led_control.h"
 #include "esp_now_comm.h"
 
-extern volatile bool start_reach_goal;
+extern volatile int start_reach_goal;
 extern volatile int mode;
 extern Adafruit_NeoPixel strip;
 
