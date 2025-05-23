@@ -78,4 +78,5 @@ void goToDistance(float x_2, float y_2) {
     float dy = y_2 - y_1;
     float distance = sqrt(pow(dx, 2) + pow(dy, 2));
     goForward(distance);
+    
 }

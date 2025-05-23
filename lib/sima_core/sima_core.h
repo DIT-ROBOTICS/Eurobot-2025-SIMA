@@ -6,8 +6,8 @@
 #include "driver/gpio.h"
 #include "soc/gpio_struct.h"   
 
-#define accRate 0.015
-#define decRate 0.015
+#define accRate 0.03
+#define decRate 0.03
 #define decDistance 200
 #define ACC_FIXED 33000
 #define SCALE     1000000000ULL
@@ -33,7 +33,9 @@ extern volatile int start_reach_goal;
 void sima_core_1(void *parameter);
 void sima_core_2(void *parameter);
 void sima_core_3(void *parameter);
-void sima_core_superstar(void *parameter);
+void sima_core_superstar_normal(void *parameter);
+void sima_core_superstar_stable(void *parameter);
+void sima_core_superstar_aggressive(void *parameter);
 void initSimaCore();
 void switchcase();
 void setSimaGoal(int num);

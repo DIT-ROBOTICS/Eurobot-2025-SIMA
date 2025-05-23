@@ -51,7 +51,7 @@ void setup() {
     else if(SIMA_NUM == 3 )
     xTaskCreatePinnedToCore(sima_core_3, "SimaCoreTask", 8192, NULL, 2, NULL, 1);
     else if(SIMA_NUM == 4)
-    xTaskCreatePinnedToCore(sima_core_superstar, "SimaCoreTaskSuperstar", 8192, NULL, 2, NULL, 1);
+    xTaskCreatePinnedToCore(sima_core_superstar_stable, "SimaCoreTaskSuperstar", 8192, NULL, 2, NULL, 1);
 
 }
 

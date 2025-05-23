@@ -37,7 +37,7 @@ float x_1,    y_1,
       mission,  avoidStage,
       adjust;
 int step=0, preStep=0, test=1, team=1;
-int maxStepDelay = 100, minStepDelay = 50, avoidStepDelay = 150;
+int maxStepDelay = 160, minStepDelay = 60, avoidStepDelay = 150;
 
 
 void initSimaCore() {
@@ -94,7 +94,7 @@ void initSimaCore() {
     // Scan I2C bus and detect connected devices
     Serial.println("\nI2C Scanner Starting...");
     for (uint8_t address = 1; address < 127; address++) {
-        Wire.beginTransmission(address);
+        Wire.beginTransmission(address); 
         if (Wire.endTransmission() == 0) {
             Serial.printf("I2C Device Found at 0x%02X\n", address);
         }
@@ -141,16 +141,16 @@ void setSimaGoal(int num, int team){
     if (num==3&&team==1) {
         x_1     = 100;
         y_1     = 1610;
-        theta   = 351.55;
+        theta   = 346.814;
         x_goal  = 1850;
-        y_goal  = 1500;
+        y_goal  = 1400;
     }
     if (num==3&&team==2) {
         x_1     = 2900;
-        y_1     = 1610;
-        theta   = 188.45;
+        y_1     = 1610; 
+        theta   = 193.1858;
         x_goal  = 1150;
-        y_goal  = 1500;
+        y_goal  = 1400;
     }
 }
 void stop() {
@@ -280,10 +280,10 @@ void avoidance(){
                 adjust = 3;
         }                                    
     }                    
-    if (VL53M < 350){
+    if (VL53M < 250){
         decelerationL = true;
         decelerationR = true;
-    }else if (VL53M > 350){
+    }else if (VL53M > 250){
         decelerationL = false;
         decelerationR = false;
         accelerationL = true;
@@ -365,8 +365,7 @@ void sima_core_1(void *parameter) {
             vTaskDelay(1);
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
-                    vTaskDelay(pdMS_TO_TICKS(800));
-                    //goForward(10000);
+                    vTaskDelay(pdMS_TO_TICKS(600));
                     goToDistance(x_goal, y_goal);
                     mission = 1.5;
                 }else if (mission == 2 ) {
@@ -420,14 +419,11 @@ void sima_core_2(void *parameter) {
             //WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f\n", x_1, y_1);
             if (!reach_goal&&!sima_timeout){ 
                 if (mission == 1 ) {
-                    vTaskDelay(pdMS_TO_TICKS(400));
+                    vTaskDelay(pdMS_TO_TICKS(300));
                     goToDistance(x_goal, y_goal);
                     mission = 1.5;
                 }else if (mission == 2 ) {
                     reach_goal=1;
-                }
-                if(millis() - startTime > 1000){
-                avoidance();
                 }
             }
 
@@ -442,6 +438,7 @@ void sima_core_3(void *parameter) {
     unsigned long startTime = 0;
     bool sima_started = false;
     bool sima_timeout = false;
+
     for (;;) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
             
@@ -478,13 +475,27 @@ void sima_core_3(void *parameter) {
                 // WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f\n", x_1, y_1);
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
-                    goToDistance(x_goal, y_goal);
+                    if(team == 1){
+                        goToDistance(1850, 1200);
+                    }
+                    else if(team == 2){
+                        goToDistance(1150, 1200);
+                    }
                     mission = 1.5;
                 }else if (mission == 2 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goToTheta(x_goal, y_goal);
+                    mission = 2.5;
+                }else if (mission == 3 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goToDistance(x_goal, y_goal);
+                    mission = 3.5;
+                }else if (mission == 4 ) {
                     reach_goal=1;
                 }
-
-                avoidance();
+                if (mission <2 || mission >5){
+                    avoidance();
+                }
             }
             if (sima_timeout||reach_goal) {
                 party_time();
@@ -493,7 +504,62 @@ void sima_core_3(void *parameter) {
     }
 }
 
-void sima_core_superstar(void *parameter) {
+void sima_core_superstar_normal(void *parameter) {
+    unsigned long startTime = 0;
+    bool sima_started = false;
+    bool sima_timeout = false;
+    for (;;) {
+        if (start_reach_goal || espNow.lastMessage.sima_start) {
+            if (!sima_started) {
+                if(espNow.lastMessage.sima_start>0){
+                    team = espNow.lastMessage.sima_start;
+                }else if(start_reach_goal>0){
+                    team = start_reach_goal;
+                }
+                startTime = millis();
+                sima_started = true;
+                maxStepDelay = 180;
+                minStepDelay = 110;
+            }
+            if (sima_started && !sima_timeout) {
+                if (millis() - startTime > 14000) {
+                    sima_timeout = true;
+                    continue;
+                }
+            }
+                vTaskDelay(1);
+            if (!reach_goal&&!sima_timeout) {
+                if (mission == 1 ) {
+                    goForward(1150);
+                    mission = 1.5;
+                }         
+                else if (mission == 2 ) {
+                    vTaskDelay(pdMS_TO_TICKS(500));
+                    if(team == 1){
+                        turnLeft(90);
+                    }
+                    else if(team == 2){
+                        turnRight(90);
+                    }
+                    mission = 2.5;
+                }
+                else if (mission == 3 ) {
+                    goBackward(280);
+                    mission = 3.5;
+                }
+                else if (mission == 4 ) {
+                    reach_goal=1;
+                }
+            }
+            if (sima_timeout||reach_goal) {
+                party_time();
+            }     
+        }
+   
+    }        
+}
+
+void sima_core_superstar_stable(void *parameter) {
     unsigned long startTime = 0;
     bool sima_started = false;
     bool sima_timeout = false;
@@ -524,7 +590,7 @@ void sima_core_superstar(void *parameter) {
                     mission = 1.5;
                 }         
                 else if (mission == 2 ) {
-                    vTaskDelay(pdMS_TO_TICKS(500));
+                    vTaskDelay(pdMS_TO_TICKS(300));
                     if(team == 1){
                         turnLeft(90);
                     }
@@ -534,12 +600,102 @@ void sima_core_superstar(void *parameter) {
                     mission = 2.5;
                 }
                 else if (mission == 3 ) {
-                    goBackward(280);
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goBackward(50);
                     mission = 3.5;
                 }
                 else if (mission == 4 ) {
-                    reach_goal=1;
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    turnRight(180);
+                    mission = 4.5;
                 }
+                else if (mission == 5 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goBackward(120);
+                    mission = 5.5;
+                }                
+                else if (mission == 6 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goForward(320);
+                    mission = 6.5;
+                }
+                else if (mission == 7 ) {
+                    reach_goal=1;
+                }                                  
+            }
+            if (sima_timeout||reach_goal) {
+                party_time();
+            }     
+        }
+   
+    }        
+}
+
+void sima_core_superstar_aggressive(void *parameter) {
+    unsigned long startTime = 0;
+    bool sima_started = false;
+    bool sima_timeout = false;
+    for (;;) {
+        if (start_reach_goal || espNow.lastMessage.sima_start) {
+            if (!sima_started) {
+                if(espNow.lastMessage.sima_start>0){
+                    team = espNow.lastMessage.sima_start;
+                }else if(start_reach_goal>0){
+                    team = start_reach_goal;
+                }
+                startTime = millis();
+                sima_started = true;
+                maxStepDelay = 130;
+                minStepDelay = 70;
+            }
+            if (sima_started && !sima_timeout) {
+                if (millis() - startTime > 14000) {
+                    sima_timeout = true;
+                    continue;
+                }
+            }
+                vTaskDelay(1);
+            if (!reach_goal&&!sima_timeout) {
+                if (mission == 1 ) {
+                    //esp_timer_stop(goalCheckTimer);
+                    goForward(1800);
+                    mission = 1.5;
+                }         
+                else if (mission == 2 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    maxStepDelay = 130;
+                    minStepDelay = 70;                    
+                    if(team == 1){
+                        turnLeft(90);
+                    }
+                    else if(team == 2){
+                        turnRight(90);
+                    }
+                    mission = 2.5;
+                }
+                else if (mission == 3 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goBackward(50);
+                    mission = 3.5;
+                }
+                else if (mission == 4 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    turnRight(180);
+                    mission = 4.5;
+                }
+                else if (mission == 5 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goBackward(200);
+                    mission = 5.5;
+                }                
+                else if (mission == 6 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goForward(320);
+                    mission = 6.5;
+                }
+                else if (mission == 7 ) {
+                    reach_goal=1;
+                }                                  
             }
             if (sima_timeout||reach_goal) {
                 party_time();
