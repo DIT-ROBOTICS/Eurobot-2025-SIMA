@@ -110,47 +110,33 @@ void initSimaCore() {
 
 void setSimaGoal(int num, int team){
     
-    if (num==1&&team==1) {
-        x_1     = 100;
-        y_1     = 1830;
-        theta = 338.78;
-        x_goal  = 950;
-        y_goal  = 1500;
-    }
-    if (num==1&&team==2) {
-        x_1     = 2900;
-        y_1     = 1830;
-        theta = 201.22;
-        x_goal  = 2050;
-        y_goal  = 1500;
-    }
     if (num==2&&team==1) {
         x_1     = 100;
         y_1     = 1720;
         theta   = 342.86; 
-        x_goal  = 1300;
-        y_goal  = 1350;
+        x_goal  = 1000;
+        y_goal  = 1450;
     }
     if (num==2&&team==2) {
         x_1     = 2900;
         y_1     = 1720;
         theta   = 197.14; 
-        x_goal  = 1700;
-        y_goal  = 1350;
+        x_goal  = 2000;
+        y_goal  = 1450;
     }
     if (num==3&&team==1) {
         x_1     = 100;
         y_1     = 1610;
         theta   = 346.814;
-        x_goal  = 1850;
-        y_goal  = 1400;
+        x_goal  = 1350;
+        y_goal  = 1325;
     }
     if (num==3&&team==2) {
         x_1     = 2900;
         y_1     = 1610; 
         theta   = 193.1858;
-        x_goal  = 1150;
-        y_goal  = 1400;
+        x_goal  = 1650;
+        y_goal  = 1325;
     }
 }
 void stop() {
@@ -204,7 +190,7 @@ void IRAM_ATTR stepperCallbackL(void *arg) {
     } else if (distanceL <= 0) {
         if (avoidStage==0)  mission += 0.5;
         if (avoidStage > 0 && adjust == 0) avoidStage += 0.5; 
-        if (adjust== 4.5 )adjust += 0.5;        
+        if (adjust== 4.5)adjust += 0.5;        
         switchcase();
     }
 }
@@ -365,7 +351,8 @@ void sima_core_1(void *parameter) {
                 scenario_set(scenario);
                 startTime = millis();
                 sima_started = true;
-                setSimaGoal(SIMA_NUM, team);
+                maxStepDelay = 110;
+                minStepDelay = 50;
             }
             if (sima_started && !sima_timeout) {
                 if (millis() - startTime > 10000) {
@@ -376,12 +363,7 @@ void sima_core_1(void *parameter) {
             vTaskDelay(1);
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
-                    vTaskDelay(pdMS_TO_TICKS(timeOffset));
-                    if(if2avoid == 1){
-                        vTaskDelay(pdMS_TO_TICKS(200));
-                    }
-                    vTaskDelay(pdMS_TO_TICKS(600));
-                    goToDistance(x_goal, y_goal);
+                    goForward(1800);
                     mission = 1.5;
                 }else if (mission == 2 ) {
                     reach_goal=1;
@@ -436,17 +418,11 @@ void sima_core_2(void *parameter) {
             if (!reach_goal&&!sima_timeout){ 
                 if (mission == 1 ) {
                     vTaskDelay(pdMS_TO_TICKS(timeOffset));
-                    if(if2avoid == 1){
-                        vTaskDelay(pdMS_TO_TICKS(200));
-                    }
                     vTaskDelay(pdMS_TO_TICKS(300));
                     goToDistance(x_goal, y_goal);
                     mission = 1.5;
                 }else if (mission == 2 ) {
                     reach_goal=1;
-                }
-                if(if2avoid == 1){
-                    avoidance();
                 }
             }
             if (sima_timeout||reach_goal) {
@@ -499,30 +475,12 @@ void sima_core_3(void *parameter) {
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
                     vTaskDelay(pdMS_TO_TICKS(timeOffset));
-                    if(team == 1){
-                        goToDistance(1850, 1200);
-                    }
-                    else if(team == 2){
-                        goToDistance(1150, 1200);
-                    }
+                    goToDistance(x_goal, y_goal);
                     mission = 1.5;
                 }else if (mission == 2 ) {
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    if(team == 1){
-                        turnLeft(91.876);
-                    }
-                    else if(team == 2){
-                        turnRight(91.876);
-                    }
-                    mission = 2.5;
-                }else if (mission == 3 ) {
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    goForward(200);
-                    mission = 3.5;
-                }else if (mission == 4 ) {
                     reach_goal=1;
                 }
-                if (mission <2 || mission >5){
+                if(if2avoid == 1){
                     avoidance();
                 }
             }
@@ -689,45 +647,45 @@ void sima_core_superstar_aggressive(void *parameter) {
                 vTaskDelay(1);
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
-                    //esp_timer_stop(goalCheckTimer);
-                    goForward(1800);
+                    if(team == 1){
+                        turnLeft(27.74);
+                    }
+                    else if(team == 2){
+                        turnRight(27.74);
+                    }
                     mission = 1.5;
-                }         
-                else if (mission == 2 ) {
+                }else if (mission == 2 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));                   
+                    goForward(1150);
+                    mission = 2.5;
+                }else if (mission == 3 ) {
                     vTaskDelay(pdMS_TO_TICKS(300));
-                    maxStepDelay = 130;
-                    minStepDelay = 70;                    
                     if(team == 1){
                         turnLeft(90);
                     }
                     else if(team == 2){
                         turnRight(90);
                     }
-                    mission = 2.5;
-                }
-                else if (mission == 3 ) {
+                    mission = 3.5;
+                }else if (mission == 4 ) {
                     vTaskDelay(pdMS_TO_TICKS(300));
                     goBackward(50);
-                    mission = 3.5;
-                }
-                else if (mission == 4 ) {
+                    mission = 4.5;
+                }else if (mission == 5 ) {
                     vTaskDelay(pdMS_TO_TICKS(300));
                     turnRight(180);
-                    mission = 4.5;
-                }
-                else if (mission == 5 ) {
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    goBackward(200);
                     mission = 5.5;
-                }                
-                else if (mission == 6 ) {
+                }else if (mission == 6 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goBackward(120);
+                    mission = 6.5;
+                }else if (mission == 7 ) {
                     vTaskDelay(pdMS_TO_TICKS(300));
                     goForward(320);
-                    mission = 6.5;
-                }
-                else if (mission == 7 ) {
+                    mission = 7.5;
+                }else if (mission == 8 ) {
                     reach_goal=1;
-                }                                  
+                }                                       
             }
             if (sima_timeout||reach_goal) {
                 party_time();
