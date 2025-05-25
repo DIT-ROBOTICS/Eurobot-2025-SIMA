@@ -311,13 +311,69 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
     WebSerial.println(d);
 
     // Check commands
-    if (d == "GO1") {
-        start_reach_goal = 1;
-        WebSerial.println("SIMA GO1 command received. Starting SIMA...");
-    }else if (d == "GO2") {
-        start_reach_goal = 2;
-        WebSerial.println("SIMA GO2 command received. Starting SIMA...");
-    }else if (d.startsWith("SIMA+")) {
+    if (d == "GO101") {
+        start_reach_goal = 101;
+        WebSerial.println("SIMA GO101 command received. Starting SIMA...");
+    }else if (d == "GO102") {
+        start_reach_goal = 102;
+        WebSerial.println("SIMA GO102 command received. Starting SIMA...");
+    }else if (d == "GO111") {
+        start_reach_goal = 111;
+        WebSerial.println("SIMA GO111 command received. Starting SIMA...");
+    }else if (d == "GO112") {
+        start_reach_goal = 112;
+        WebSerial.println("SIMA GO112 command received. Starting SIMA...");
+    }else if (d == "GO121") {
+        start_reach_goal = 121;
+        WebSerial.println("SIMA GO121 command received. Starting SIMA...");
+    }else if (d == "GO122") {
+        start_reach_goal = 122;
+        WebSerial.println("SIMA GO122 command received. Starting SIMA...");
+    }else if (d == "GO131") {
+        start_reach_goal = 131;
+        WebSerial.println("SIMA GO131 command received. Starting SIMA...");
+    }else if (d == "GO132") {
+        start_reach_goal = 132;
+        WebSerial.println("SIMA GO132 command received. Starting SIMA...");
+    }else if (d == "GO141") {
+        start_reach_goal = 141;
+        WebSerial.println("SIMA GO141 command received. Starting SIMA...");
+    }else if (d == "GO142") {
+        start_reach_goal = 142;
+        WebSerial.println("SIMA GO142 command received. Starting SIMA...");
+    }else if (d == "GO201") {
+        start_reach_goal = 201;
+        WebSerial.println("SIMA GO201 command received. Starting SIMA...");
+    }else if (d == "GO202") {
+        start_reach_goal = 202;
+        WebSerial.println("SIMA GO202 command received. Starting SIMA...");
+    }else if (d == "GO211") {
+        start_reach_goal = 211;
+        WebSerial.println("SIMA GO211 command received. Starting SIMA...");
+    }else if (d == "GO212") {
+        start_reach_goal = 212;
+        WebSerial.println("SIMA GO212 command received. Starting SIMA...");
+    }else if (d == "GO221") {
+        start_reach_goal = 221;
+        WebSerial.println("SIMA GO221 command received. Starting SIMA...");
+    }else if (d == "GO222") {
+        start_reach_goal = 222;
+        WebSerial.println("SIMA GO222 command received. Starting SIMA...");
+    }else if (d == "GO231") {
+        start_reach_goal = 231;
+        WebSerial.println("SIMA GO231 command received. Starting SIMA...");
+    }else if (d == "GO232") {
+        start_reach_goal = 232;
+        WebSerial.println("SIMA GO232 command received. Starting SIMA...");
+    }else if (d == "GO241") {
+        start_reach_goal = 241;
+        WebSerial.println("SIMA GO241 command received. Starting SIMA...");
+    }else if (d == "GO242") {
+        start_reach_goal = 242;
+        WebSerial.println("SIMA GO242 command received. Starting SIMA...");
+    }
+    
+    else if (d.startsWith("SIMA+")) {
         // Extract the number part after "SIMA+"
         String numStr = d.substring(5);
         int num = numStr.toInt();
@@ -325,7 +381,7 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
         if (num > 0) {
             // WebSerial.printf("SIMA command received: %d\n", num);
             
-            if (num < 10) {
+            if (num < 300) {
                 // Single-digit: send to all SIMA devices except self
                 WebSerial.printf("Sending %d to all SIMA devices (except self)\n", num);
                 struct_message msg;
@@ -390,78 +446,79 @@ void WebInterface::onWebSerialMessage(uint8_t *data, size_t len) {
                         espNow.sendMessage(targetMac, msg);
                     }
                 }
-            } else if (num < 100) {
-                // Double-digit: tens digit is address index (1-based), ones digit is data
-                int addressIndex = (num / 10) - 1;
-                int dataToSend = num % 10;
+             } 
+             //else if (num < 100) {
+            //     // Double-digit: tens digit is address index (1-based), ones digit is data
+            //     int addressIndex = (num / 10) - 1;
+            //     int dataToSend = num % 10;
                 
-                if (addressIndex >= 0 && addressIndex < 8) {
-                    // Check if trying to send to self (can cause restart)
-                    if (addressIndex + 1 == SIMA_NUM) {
-                        WebSerial.println("Warning: Cannot send ESP-NOW message to self (would cause restart)");
-                        // Set directly instead of sending
-                        start_reach_goal = dataToSend;
-                        WebSerial.printf("Setting start_reach_goal = %d locally\n", dataToSend);
-                    } else {
-                        WebSerial.printf("Sending %d to SIMA_%02d\n", dataToSend, addressIndex + 1);
+            //     if (addressIndex >= 0 && addressIndex < 8) {
+            //         // Check if trying to send to self (can cause restart)
+            //         if (addressIndex + 1 == SIMA_NUM) {
+            //             WebSerial.println("Warning: Cannot send ESP-NOW message to self (would cause restart)");
+            //             // Set directly instead of sending
+            //             start_reach_goal = dataToSend;
+            //             WebSerial.printf("Setting start_reach_goal = %d locally\n", dataToSend);
+            //         } else {
+            //             WebSerial.printf("Sending %d to SIMA_%02d\n", dataToSend, addressIndex + 1);
                         
-                        // Get the appropriate MAC address using static arrays
-                        uint8_t* targetMac = NULL;
-                        switch (addressIndex + 1) {
-                            case 1: {
-                                static uint8_t mac[] = SIMA_01;
-                                targetMac = mac;
-                                break;
-                            }
-                            case 2: {
-                                static uint8_t mac[] = SIMA_02;
-                                targetMac = mac;
-                                break;
-                            }
-                            case 3: {
-                                static uint8_t mac[] = SIMA_03;
-                                targetMac = mac;
-                                break;
-                            }
-                            case 4: {
-                                static uint8_t mac[] = SIMA_04;
-                                targetMac = mac;
-                                break;
-                            }
-                            case 5: {
-                                static uint8_t mac[] = SIMA_05;
-                                targetMac = mac;
-                                break;
-                            }
-                            case 6: {
-                                static uint8_t mac[] = SIMA_06;
-                                targetMac = mac;
-                                break;
-                            }
-                            case 7: {
-                                static uint8_t mac[] = SIMA_07;
-                                targetMac = mac;
-                                break;
-                            }
-                            case 8: {
-                                static uint8_t mac[] = SIMA_08;
-                                targetMac = mac;
-                                break;
-                            }
-                        }
+            //             // Get the appropriate MAC address using static arrays
+            //             uint8_t* targetMac = NULL;
+            //             switch (addressIndex + 1) {
+            //                 case 1: {
+            //                     static uint8_t mac[] = SIMA_01;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //                 case 2: {
+            //                     static uint8_t mac[] = SIMA_02;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //                 case 3: {
+            //                     static uint8_t mac[] = SIMA_03;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //                 case 4: {
+            //                     static uint8_t mac[] = SIMA_04;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //                 case 5: {
+            //                     static uint8_t mac[] = SIMA_05;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //                 case 6: {
+            //                     static uint8_t mac[] = SIMA_06;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //                 case 7: {
+            //                     static uint8_t mac[] = SIMA_07;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //                 case 8: {
+            //                     static uint8_t mac[] = SIMA_08;
+            //                     targetMac = mac;
+            //                     break;
+            //                 }
+            //             }
                         
-                        if (targetMac != NULL) {
-                            struct_message msg;
-                            msg.sima_start = dataToSend;
-                            espNow.sendMessage(targetMac, msg);
-                        }
-                    }
-                } else {
-                    WebSerial.println("Invalid SIMA device index (must be 1-8)");
-                }
-            } else {
-                WebSerial.println("Invalid SIMA command (must be 1-99)");
-            }
+            //             if (targetMac != NULL) {
+            //                 struct_message msg;
+            //                 msg.sima_start = dataToSend;
+            //                 espNow.sendMessage(targetMac, msg);
+            //             }
+            //         }
+            //     } else {
+            //         WebSerial.println("Invalid SIMA device index (must be 1-8)");
+            //     }
+            // } else {
+            //     WebSerial.println("Invalid SIMA command (must be 1-99)");
+            // }
         } else {
             WebSerial.println("Invalid SIMA command format. Use: SIMA+<number>");
         }

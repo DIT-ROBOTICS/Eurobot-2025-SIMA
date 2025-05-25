@@ -36,7 +36,7 @@ float x_1,    y_1,
       distanceL,   distanceR,
       mission,  avoidStage,
       adjust;
-int step=0, preStep=0, test=1, team=1;
+int step=0, preStep=0, test=1, team=1, scenario = 0, if2avoid = 0, timeOffset = 0;
 int maxStepDelay = 160, minStepDelay = 60, avoidStepDelay = 150;
 
 
@@ -327,6 +327,17 @@ void avoidance(){
             reach_goal = 1;
     }
 }
+void scenario_set(int scenario){
+
+    if((scenario / 100 ) == 1){
+        if2avoid =  0;
+    }else if((scenario / 100 ) == 2){
+        if2avoid =  1;
+    }
+    timeOffset = ((scenario / 10) % 10)*1000;
+    team = scenario % 10;
+
+}
 void party_time(){
 
     WebSerial.println("[SIMA-CORE] Timeout reached, stopping motors.");
@@ -345,13 +356,13 @@ void sima_core_1(void *parameter) {
     bool sima_timeout = false;
     for (;;) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
-
             if (!sima_started) {
                 if(espNow.lastMessage.sima_start>0){
-                    team = espNow.lastMessage.sima_start;
+                    scenario = espNow.lastMessage.sima_start;
                 }else if(start_reach_goal>0){
-                    team = start_reach_goal;
+                    scenario = start_reach_goal;
                 }
+                scenario_set(scenario);
                 startTime = millis();
                 sima_started = true;
                 setSimaGoal(SIMA_NUM, team);
@@ -365,6 +376,10 @@ void sima_core_1(void *parameter) {
             vTaskDelay(1);
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
+                    vTaskDelay(pdMS_TO_TICKS(timeOffset));
+                    if(if2avoid == 1){
+                        vTaskDelay(pdMS_TO_TICKS(200));
+                    }
                     vTaskDelay(pdMS_TO_TICKS(600));
                     goToDistance(x_goal, y_goal);
                     mission = 1.5;
@@ -387,10 +402,11 @@ void sima_core_2(void *parameter) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {  
             if (!sima_started) {
                 if(espNow.lastMessage.sima_start>0){
-                    team = espNow.lastMessage.sima_start;
+                    scenario = espNow.lastMessage.sima_start;
                 }else if(start_reach_goal>0){
-                    team = start_reach_goal;
+                    scenario = start_reach_goal;
                 }
+                scenario_set(scenario);
                 startTime = millis();
                 sima_started = true;
                 setSimaGoal(SIMA_NUM, team);
@@ -419,14 +435,20 @@ void sima_core_2(void *parameter) {
             //WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f\n", x_1, y_1);
             if (!reach_goal&&!sima_timeout){ 
                 if (mission == 1 ) {
+                    vTaskDelay(pdMS_TO_TICKS(timeOffset));
+                    if(if2avoid == 1){
+                        vTaskDelay(pdMS_TO_TICKS(200));
+                    }
                     vTaskDelay(pdMS_TO_TICKS(300));
                     goToDistance(x_goal, y_goal);
                     mission = 1.5;
                 }else if (mission == 2 ) {
                     reach_goal=1;
                 }
+                if(if2avoid == 1){
+                    avoidance();
+                }
             }
-
             if (sima_timeout||reach_goal) {
                 party_time();
             }
@@ -444,10 +466,11 @@ void sima_core_3(void *parameter) {
             
             if (!sima_started) {
                 if(espNow.lastMessage.sima_start>0){
-                    team = espNow.lastMessage.sima_start;
+                    scenario = espNow.lastMessage.sima_start;
                 }else if(start_reach_goal>0){
-                    team = start_reach_goal;
+                    scenario = start_reach_goal;
                 }
+                scenario_set(scenario);
                 startTime = millis();
                 sima_started = true;
                 setSimaGoal(SIMA_NUM, team);
@@ -475,6 +498,7 @@ void sima_core_3(void *parameter) {
                 // WebSerial.printf("[SIMA-CORE] Updated position to x_1=%.2f, y_1=%.2f\n", x_1, y_1);
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
+                    vTaskDelay(pdMS_TO_TICKS(timeOffset));
                     if(team == 1){
                         goToDistance(1850, 1200);
                     }
@@ -484,11 +508,16 @@ void sima_core_3(void *parameter) {
                     mission = 1.5;
                 }else if (mission == 2 ) {
                     vTaskDelay(pdMS_TO_TICKS(300));
-                    goToTheta(x_goal, y_goal);
+                    if(team == 1){
+                        turnLeft(91.876);
+                    }
+                    else if(team == 2){
+                        turnRight(91.876);
+                    }
                     mission = 2.5;
                 }else if (mission == 3 ) {
                     vTaskDelay(pdMS_TO_TICKS(300));
-                    goToDistance(x_goal, y_goal);
+                    goForward(200);
                     mission = 3.5;
                 }else if (mission == 4 ) {
                     reach_goal=1;
@@ -512,10 +541,11 @@ void sima_core_superstar_normal(void *parameter) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
             if (!sima_started) {
                 if(espNow.lastMessage.sima_start>0){
-                    team = espNow.lastMessage.sima_start;
+                    scenario = espNow.lastMessage.sima_start;
                 }else if(start_reach_goal>0){
-                    team = start_reach_goal;
+                    scenario = start_reach_goal;
                 }
+                scenario_set(scenario);
                 startTime = millis();
                 sima_started = true;
                 maxStepDelay = 180;
@@ -567,10 +597,11 @@ void sima_core_superstar_stable(void *parameter) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
             if (!sima_started) {
                 if(espNow.lastMessage.sima_start>0){
-                    team = espNow.lastMessage.sima_start;
+                    scenario = espNow.lastMessage.sima_start;
                 }else if(start_reach_goal>0){
-                    team = start_reach_goal;
+                    scenario = start_reach_goal;
                 }
+                scenario_set(scenario);
                 startTime = millis();
                 sima_started = true;
                 maxStepDelay = 180;
@@ -639,10 +670,11 @@ void sima_core_superstar_aggressive(void *parameter) {
         if (start_reach_goal || espNow.lastMessage.sima_start) {
             if (!sima_started) {
                 if(espNow.lastMessage.sima_start>0){
-                    team = espNow.lastMessage.sima_start;
+                    scenario = espNow.lastMessage.sima_start;
                 }else if(start_reach_goal>0){
-                    team = start_reach_goal;
+                    scenario = start_reach_goal;
                 }
+                scenario_set(scenario);
                 startTime = millis();
                 sima_started = true;
                 maxStepDelay = 130;
