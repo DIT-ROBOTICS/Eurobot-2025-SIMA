@@ -92,14 +92,14 @@ void initSimaCore() {
     accelerationR=true;
 
     // Scan I2C bus and detect connected devices
-    Serial.println("\nI2C Scanner Starting...");
+    WebSerial.println("\nI2C Scanner Starting...");
     for (uint8_t address = 1; address < 127; address++) {
         Wire.beginTransmission(address); 
         if (Wire.endTransmission() == 0) {
-            Serial.printf("I2C Device Found at 0x%02X\n", address);
+            WebSerial.printf("I2C Device Found at 0x%02X\n", address);
         }
     }
-    Serial.println("I2C Scan Done.");
+    WebSerial.println("I2C Scan Done.");
 
     sensors.begin();
 
@@ -349,6 +349,81 @@ void party_time(){
     servoR.write(45);
     vTaskDelay(1000);    
 }
+void sima_core_check_1(void *parameter) {
+    unsigned long startTime = 0;
+    bool sima_started = false;
+    bool sima_timeout = false;
+    maxStepDelay = 180 ;
+    minStepDelay = 100 ;
+    for (;;) {
+        if (start_reach_goal || espNow.lastMessage.sima_start) {
+            sensors.readSensors();
+            vTaskDelay(1);
+            if (mission == 1 ) {
+                vTaskDelay(pdMS_TO_TICKS(2000));
+                goForward(965);
+                mission = 1.5;
+            }else if (mission == 2 ) {
+                reach_goal=1;
+            }
+            if(VL53M<300){
+                mission += 10;
+                stop();
+            }
+        }
+
+    }    
+}        
+void sima_core_check_2(void *parameter) {
+    unsigned long startTime = 0;
+    bool sima_started = false;
+    bool sima_timeout = false;
+    maxStepDelay = 180 ;
+    minStepDelay = 100 ;
+    for (;;) {
+        if (start_reach_goal || espNow.lastMessage.sima_start) {
+            sensors.readSensors();
+            vTaskDelay(1);
+            if (mission == 1 ) {
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                goForward(1225);
+                mission = 1.5;
+            }else if (mission == 2 ) {
+                reach_goal=1;
+            }
+            if(VL53M<300){
+                mission += 10;
+                stop();
+            }
+        }
+
+    }    
+}        
+void sima_core_check_3(void *parameter) {
+    unsigned long startTime = 0;
+    bool sima_started = false;
+    bool sima_timeout = false;
+    maxStepDelay = 180 ;
+    minStepDelay = 100 ;
+    for (;;) {
+        if (start_reach_goal || espNow.lastMessage.sima_start) {
+            sensors.readSensors();
+            vTaskDelay(1);
+            if (mission == 1 ) {
+                goForward(1811);
+                mission = 1.5;
+            }else if (mission == 2 ) {
+                reach_goal=1;
+            }
+            if(VL53M<300){
+                mission += 10;
+                stop();
+            }
+        }
+
+    }    
+}        
+
 
 void sima_core_1(void *parameter) {
     unsigned long startTime = 0;
@@ -605,7 +680,7 @@ void sima_core_superstar_stable(void *parameter) {
                 startTime = millis();
                 sima_started = true;
                 maxStepDelay = 180;
-                minStepDelay = 110;
+                minStepDelay = 180;
             }
             if (sima_started && !sima_timeout) {
                 if (millis() - startTime > 14000) {
@@ -617,10 +692,45 @@ void sima_core_superstar_stable(void *parameter) {
             if (!reach_goal&&!sima_timeout) {
                 if (mission == 1 ) {
                     //esp_timer_stop(goalCheckTimer);
-                    goForward(1150);
+                    goBackward(1150);
                     mission = 1.5;
                 }         
                 else if (mission == 2 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    if(team == 1){
+                        turnRight(90);
+                    }
+                    else if(team == 2){
+                        turnLeft(90);
+                    }
+                    mission = 2.5;
+                }
+                else if (mission == 3 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goBackward(70);
+                    mission = 3.5;
+                }
+                else if (mission == 4 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    if(team == 1){
+                        turnRight(180);
+                    }
+                    else if(team == 2){
+                        turnLeft(180);
+                    }
+                    mission = 4.5;
+                }
+                else if (mission == 5 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goBackward(150);
+                    mission = 5.5;
+                }
+                else if (mission == 6 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    goForward(350);
+                    mission = 6.5;
+                }                
+                else if (mission == 7 ) {
                     vTaskDelay(pdMS_TO_TICKS(300));
                     if(team == 1){
                         turnLeft(90);
@@ -628,29 +738,9 @@ void sima_core_superstar_stable(void *parameter) {
                     else if(team == 2){
                         turnRight(90);
                     }
-                    mission = 2.5;
+                    mission = 7.5;
                 }
-                else if (mission == 3 ) {
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    goBackward(50);
-                    mission = 3.5;
-                }
-                else if (mission == 4 ) {
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    turnRight(180);
-                    mission = 4.5;
-                }
-                else if (mission == 5 ) {
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    goBackward(120);
-                    mission = 5.5;
-                }                
-                else if (mission == 6 ) {
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    goForward(320);
-                    mission = 6.5;
-                }
-                else if (mission == 7 ) {
+                else if (mission == 8 ) {
                     reach_goal=1;
                 }                                  
             }

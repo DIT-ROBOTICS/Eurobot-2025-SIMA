@@ -15,5 +15,7 @@ void goForward(float distance);
 void goBackward(float distance);
 void turnLeft(float degree);
 void turnRight(float degree);
+void onlyLeftWheel(float degree);
+void onlyRightWheel(float degree);
 void goToTheta(float x_2, float y_2);
 void goToDistance(float x_2, float y_2);

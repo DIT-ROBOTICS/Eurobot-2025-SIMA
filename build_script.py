@@ -16,9 +16,9 @@ sima_configs = [
     # {"hostname": "DIT-SIMA-02", "sima_num": 2},
     # {"hostname": "DIT-SIMA-03", "sima_num": 3},
     # {"hostname": "DIT-SIMA-04", "sima_num": 4},
-    {"hostname": "DIT-SIMA-05", "sima_num": 1},
-    {"hostname": "DIT-SIMA-06", "sima_num": 2},
-    {"hostname": "DIT-SIMA-07", "sima_num": 3},
+    # {"hostname": "DIT-SIMA-05", "sima_num": 1},
+    # {"hostname": "DIT-SIMA-06", "sima_num": 2},
+    # {"hostname": "DIT-SIMA-07", "sima_num": 3},
     {"hostname": "DIT-SIMA-08", "sima_num": 4},
 ]
 

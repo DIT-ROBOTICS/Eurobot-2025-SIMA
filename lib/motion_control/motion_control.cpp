@@ -62,6 +62,27 @@ void turnRight(float degree) {
     theta -= degree;
 }
 
+void onlyLeftWheel(float degree){
+
+    switchcase();
+    rotatingR = true;
+    stepDelayL = avoidStepDelay;
+    digitalWrite(DIR_PIN_L, LOW);
+    distanceL = carCircum * degree * 2 / 360;
+    esp_timer_start_once(stepperTimerL, stepDelayL);
+
+}
+void onlyRightWheel(float degree){
+
+    switchcase();
+    rotatingL = true;
+    stepDelayR = avoidStepDelay;
+    digitalWrite(DIR_PIN_R, LOW);
+    distanceR = carCircum * degree * 2 / 360;
+    esp_timer_start_once(stepperTimerR, stepDelayR);
+
+}
+
 void goToTheta(float x_2, float y_2) {
     float dx = x_2 - x_1;
     float dy = y_2 - y_1;
