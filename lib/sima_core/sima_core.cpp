@@ -456,9 +456,33 @@ void sima_core_1(void *parameter) {
                         vTaskDelay(pdMS_TO_TICKS(200));
                     }
                     vTaskDelay(pdMS_TO_TICKS(600));
-                    goToDistance(x_goal, y_goal);
+                    goForward(327);
                     mission = 1.5;
                 }else if (mission == 2 ) {
+                    vTaskDelay(pdMS_TO_TICKS(300));
+                    if (team == 1){
+                        turnRight(31);
+                    }else if (team == 2){
+                        turnLeft(31);
+                    }
+                    mission = 2.5;
+                }else if (mission == 3 ) {
+                    vTaskDelay(pdMS_TO_TICKS(200));
+                    goForward(250);
+                    mission = 3.5;
+                }else if (mission == 4 ) {
+                    vTaskDelay(pdMS_TO_TICKS(200));
+                    if(team == 1){
+                        turnLeft(54);
+                    }else if(team == 2){
+                        turnRight(54);
+                    }
+                    mission = 4.5;
+                }else if (mission == 5 ) {
+                    vTaskDelay(pdMS_TO_TICKS(200));
+                    goForward(500);
+                    mission = 5.5;
+                }else if (mission == 6 ) {
                     reach_goal=1;
                 }
             }
@@ -517,7 +541,19 @@ void sima_core_2(void *parameter) {
                     vTaskDelay(pdMS_TO_TICKS(300));
                     goToDistance(x_goal, y_goal);
                     mission = 1.5;
-                }else if (mission == 2 ) {
+                }else if (mission == 2){
+                    if(team == 1){
+                         turnLeft(60);
+                    }
+                    else if (team == 2){
+                        turnRight(60);
+                    }
+                    mission = 2.5;
+                }else if (mission == 3){
+                    goForward(300);
+                    mission = 3.5;
+                }
+                else if (mission == 4 ) {
                     reach_goal=1;
                 }
                 if(if2avoid == 1){
