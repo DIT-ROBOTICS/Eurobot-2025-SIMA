@@ -634,7 +634,9 @@ void sima_core_3(void *parameter) {
                     reach_goal=1;
                 }
                 if (mission <2 || mission >5){
-                    avoidance();
+                    if(if2avoid == 1){
+                        avoidance();
+                    }
                 }
             }
             if (sima_timeout||reach_goal) {
